@@ -1,16 +1,21 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "build/start/index.js",
   "scripts": {
-    "server": "nodemon start/index.ts",
-    "dev": "ts-node start/index.ts",
-    "start": "ts-node start/index.ts",
+    "server": "nodemon --watch . --ext ts --exec ts-node ./start/index.ts",
+    "dev": "ts-node ./start/index.ts",
+    "start": "ts-node ./start/index.ts",
     "build": "tsc",
+    "check": "tsc --noEmit",
+    "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:studio": "prisma studio",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepare": "husky"
   },
-  "type": "module",
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -21,7 +26,8 @@
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "husky": "^9.1.7",
-    "prisma": "^7.5.0"
+    "prisma": "^7.5.0",
+    "redis": "^5.11.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
