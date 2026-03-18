@@ -22,18 +22,51 @@ enum RequestErrorCode {
   INTERNAL_ERROR
 }
 
+enum OAuthProvider {
+  GOOGLE
+}
+
 model User {
-  id                 Int            @id @default(autoincrement())
-  email              String         @unique
-  name               String?
-  password_hash      String
-  stripe_customer_id String?
-  api_keys           ApiKey[]
-  usage_records      UsageRecord[]
-  request_logs       RequestLog[]
-  billing_cycles     BillingCycle[]
-  created_at         DateTime       @default(now())
-  updated_at         DateTime       @updatedAt
+  id                        Int                      @id @default(autoincrement())
+  email                     String                   @unique
+  name                      String?
+  password_hash             String?
+  is_email_verified         Boolean                  @default(false)
+  stripe_customer_id        String?
+  api_keys                  ApiKey[]
+  usage_records             UsageRecord[]
+  request_logs              RequestLog[]
+  billing_cycles            BillingCycle[]
+  email_verification_tokens EmailVerificationToken[]
+  oauth_accounts            OAuthAccount[]
+  created_at                DateTime                 @default(now())
+  updated_at                DateTime                 @updatedAt
+}
+
+model EmailVerificationToken {
+  id          Int       @id @default(autoincrement())
+  user_id     Int
+  token_hash  String    @unique
+  expires_at  DateTime
+  consumed_at DateTime?
+  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at  DateTime  @default(now())
+
+  @@index([user_id, expires_at])
+}
+
+model OAuthAccount {
+  id                 Int           @id @default(autoincrement())
+  user_id            Int
+  provider           OAuthProvider
+  provider_user_id   String
+  email              String?
+  user               User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at         DateTime      @default(now())
+  updated_at         DateTime      @updatedAt
+
+  @@unique([provider, provider_user_id])
+  @@index([user_id, provider])
 }
 
 model ApiKey {

@@ -2,8 +2,10 @@ import express from "express";
 import dotenv from "dotenv";
 import { getPrismaClient } from "../lib/prisma";
 import { getRedisClient } from "../lib/redis";
+import { corsMiddleware } from "../middlewares/cors";
 import { errorHandler, notFoundHandler } from "../middlewares/error-handler";
 import { requestLogger } from "../middlewares/request-logger";
+import { authRouter } from "../routes/auth_routes";
 import { logger } from "../utils/logger";
 
 dotenv.config();
@@ -14,7 +16,9 @@ const port = process.env.PORT || 8000;
 
 app.disable("x-powered-by");
 app.use(requestLogger);
+app.use(corsMiddleware);
 app.use(express.json());
+app.use("/api/v1/auth", authRouter);
 
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
