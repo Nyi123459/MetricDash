@@ -2,6 +2,9 @@ import express from "express";
 import dotenv from "dotenv";
 import { getPrismaClient } from "../lib/prisma";
 import { getRedisClient } from "../lib/redis";
+import { errorHandler, notFoundHandler } from "../middlewares/error-handler";
+import { requestLogger } from "../middlewares/request-logger";
+import { logger } from "../utils/logger";
 
 dotenv.config();
 
@@ -9,6 +12,8 @@ const app = express();
 
 const port = process.env.PORT || 8000;
 
+app.disable("x-powered-by");
+app.use(requestLogger);
 app.use(express.json());
 
 app.get("/health", (_req, res) => {
@@ -26,12 +31,17 @@ app.get("/health/db", async (_req, res) => {
       database: "connected",
     });
   } catch (error) {
-    console.error("Database health check failed:", error);
+    logger.error("Database health check failed", {
+      requestId: res.locals.requestId,
+      message:
+        error instanceof Error ? error.message : "Unknown database error",
+    });
 
     res.status(503).json({
       status: "error",
       database: "disconnected",
-      message: error instanceof Error ? error.message : "Unknown database error",
+      message:
+        error instanceof Error ? error.message : "Unknown database error",
     });
   }
 });
@@ -46,7 +56,10 @@ app.get("/health/redis", async (_req, res) => {
       redis: "connected",
     });
   } catch (error) {
-    console.error("Redis health check failed:", error);
+    logger.error("Redis health check failed", {
+      requestId: res.locals.requestId,
+      message: error instanceof Error ? error.message : "Unknown Redis error",
+    });
 
     res.status(503).json({
       status: "error",
@@ -56,18 +69,26 @@ app.get("/health/redis", async (_req, res) => {
   }
 });
 
+app.use(notFoundHandler);
+app.use(errorHandler);
+
 const server = app.listen(port, () => {
-  console.log(`Backend is running in port: ${port}`);
+  logger.info("Backend server started", {
+    port,
+    environment: process.env.NODE_ENV ?? "development",
+  });
 });
 
 async function shutdown(signal: string) {
-  console.log(`Received ${signal}. Shutting down backend...`);
+  logger.info("Shutdown signal received", { signal });
 
   try {
     const prisma = getPrismaClient();
     await prisma.$disconnect();
   } catch (error) {
-    console.error("Failed to disconnect Prisma cleanly:", error);
+    logger.error("Failed to disconnect Prisma cleanly", {
+      message: error instanceof Error ? error.message : "Unknown Prisma error",
+    });
   }
 
   try {
@@ -76,7 +97,9 @@ async function shutdown(signal: string) {
       await redis.quit();
     }
   } catch (error) {
-    console.error("Failed to disconnect Redis cleanly:", error);
+    logger.error("Failed to disconnect Redis cleanly", {
+      message: error instanceof Error ? error.message : "Unknown Redis error",
+    });
   }
 
   server.close(() => {

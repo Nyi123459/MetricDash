@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,11 +6,115 @@ datasource db {
   provider = "mysql"
 }
 
+enum BillingCycleStatus {
+  OPEN
+  CLOSED
+  INVOICED
+}
+
+enum RequestErrorCode {
+  INVALID_URL
+  RATE_LIMITED
+  FETCH_TIMEOUT
+  FETCH_FAILED
+  PARSE_FAILED
+  UPSTREAM_ERROR
+  INTERNAL_ERROR
+}
+
 model User {
-  id                 Int      @id @default(autoincrement())
-  email              String   @unique
+  id                 Int            @id @default(autoincrement())
+  email              String         @unique
+  name               String?
   password_hash      String
   stripe_customer_id String?
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
+  api_keys           ApiKey[]
+  usage_records      UsageRecord[]
+  request_logs       RequestLog[]
+  billing_cycles     BillingCycle[]
+  created_at         DateTime       @default(now())
+  updated_at         DateTime       @updatedAt
+}
+
+model ApiKey {
+  id                    Int           @id @default(autoincrement())
+  user_id               Int
+  name                  String
+  key_prefix            String
+  key_hash              String        @unique
+  requests_per_minute   Int           @default(60)
+  last_used_at          DateTime?
+  revoked_at            DateTime?
+  expires_at            DateTime?
+  user                  User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  usage_records         UsageRecord[]
+  request_logs          RequestLog[]
+  created_at            DateTime      @default(now())
+  updated_at            DateTime      @updatedAt
+
+  @@index([user_id, revoked_at])
+  @@index([user_id, created_at])
+}
+
+model UsageRecord {
+  id               Int      @id @default(autoincrement())
+  user_id          Int
+  api_key_id       Int
+  usage_date       DateTime @db.Date
+  request_count    Int      @default(0)
+  cache_hits       Int      @default(0)
+  cache_misses     Int      @default(0)
+  error_count      Int      @default(0)
+  total_latency_ms Int      @default(0)
+  user             User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  api_key          ApiKey   @relation(fields: [api_key_id], references: [id], onDelete: Cascade)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@unique([api_key_id, usage_date])
+  @@index([user_id, usage_date])
+}
+
+model RequestLog {
+  id               Int              @id @default(autoincrement())
+  request_id       String           @unique
+  user_id          Int
+  api_key_id       Int
+  url              String           @db.Text
+  normalized_url   String?          @db.Text
+  canonical_url    String?          @db.Text
+  domain           String?
+  method           String           @default("GET")
+  endpoint         String
+  status_code      Int
+  latency_ms       Int
+  cache_hit        Boolean          @default(false)
+  content_type     String?
+  error_code       RequestErrorCode?
+  user             User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  api_key          ApiKey           @relation(fields: [api_key_id], references: [id], onDelete: Cascade)
+  requested_at     DateTime         @default(now())
+
+  @@index([user_id, requested_at])
+  @@index([api_key_id, requested_at])
+  @@index([domain, requested_at])
+}
+
+model BillingCycle {
+  id                   Int                @id @default(autoincrement())
+  user_id              Int
+  period_start         DateTime           @db.Date
+  period_end           DateTime           @db.Date
+  request_count        Int                @default(0)
+  cache_hits           Int                @default(0)
+  cache_misses         Int                @default(0)
+  billable_requests    Int                @default(0)
+  estimated_cost_cents Int                @default(0)
+  status               BillingCycleStatus @default(OPEN)
+  user                 User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at           DateTime           @default(now())
+  updated_at           DateTime           @updatedAt
+
+  @@unique([user_id, period_start, period_end])
+  @@index([user_id, status])
 }

@@ -7,6 +7,7 @@
     "dev": "ts-node ./start/index.ts",
     "start": "ts-node ./start/index.ts",
     "build": "tsc",
+    "lint": "tsc --noEmit",
     "check": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
