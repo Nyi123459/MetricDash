@@ -26,6 +26,7 @@ export function corsMiddleware(
   if (origin && allowedOrigins.includes(origin)) {
     res.header("Access-Control-Allow-Origin", origin);
     res.header("Vary", "Origin");
+    res.header("Access-Control-Allow-Credentials", "true");
   }
 
   res.header(

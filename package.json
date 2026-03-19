@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prepare": "husky",
+    "prepare": "git config core.hooksPath .husky",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "npm run lint:backend && npm run lint:frontend",
@@ -13,6 +13,10 @@
     "check": "npm run check:backend && npm run check:frontend",
     "check:backend": "npm --prefix backend run check",
     "check:frontend": "npm --prefix frontend run build",
+    "test:backend": "npm --prefix backend test",
+    "test:frontend": "npm --prefix frontend test",
+    "test:all": "npm run test:backend && npm run test:frontend",
+    "build:all": "npm run build:backend && npm run build:frontend",
     "dev:backend": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix frontend run dev",
     "build:backend": "npm --prefix backend run build",
@@ -26,5 +30,8 @@
   "description": "",
   "dependencies": {
     "prettier": "^3.8.1"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
   }
 }

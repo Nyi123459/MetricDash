@@ -39,6 +39,7 @@ model User {
   billing_cycles            BillingCycle[]
   email_verification_tokens EmailVerificationToken[]
   oauth_accounts            OAuthAccount[]
+  refresh_tokens            RefreshToken[]
   created_at                DateTime                 @default(now())
   updated_at                DateTime                 @updatedAt
 }
@@ -67,6 +68,19 @@ model OAuthAccount {
 
   @@unique([provider, provider_user_id])
   @@index([user_id, provider])
+}
+
+model RefreshToken {
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  token_hash  String   @unique
+  expires_at  DateTime
+  revoked_at  DateTime?
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([user_id, expires_at])
 }
 
 model ApiKey {

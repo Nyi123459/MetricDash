@@ -1,5 +1,11 @@
 import { Request, Response } from "express";
 import { AuthService } from "../services/auth_service";
+import {
+  clearSessionCookies,
+  getCookieValue,
+  REFRESH_TOKEN_COOKIE_NAME,
+  setSessionCookies,
+} from "../utils/cookies";
 
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -29,24 +35,76 @@ export class AuthController {
       password: req.body.password,
     });
 
+    // console.log('Result', result)
+
+    setSessionCookies(
+      res,
+      result.accessToken,
+      result.refreshToken,
+      this.authService.getAccessTokenMaxAgeMs(),
+      this.authService.getRefreshTokenMaxAgeMs(),
+    );
+
     res.status(200).json({
       message: "Login succeeded",
       user: result.user,
-      accessToken: result.accessToken,
+      requestId: res.locals.requestId,
+    });
+  };
+
+  refresh = async (req: Request, res: Response) => {
+    const refreshToken = getCookieValue(
+      req.headers.cookie,
+      REFRESH_TOKEN_COOKIE_NAME,
+    );
+    const result = await this.authService.refreshSession({
+      refreshToken: refreshToken ?? "",
+    });
+
+    setSessionCookies(
+      res,
+      result.accessToken,
+      result.refreshToken,
+      this.authService.getAccessTokenMaxAgeMs(),
+      this.authService.getRefreshTokenMaxAgeMs(),
+    );
+
+    res.status(200).json({
+      message: "Session refreshed",
+      user: result.user,
+      requestId: res.locals.requestId,
+    });
+  };
+
+  logout = async (req: Request, res: Response) => {
+    const refreshToken = getCookieValue(
+      req.headers.cookie,
+      REFRESH_TOKEN_COOKIE_NAME,
+    );
+
+    await this.authService.logout({ refreshToken });
+    clearSessionCookies(res);
+
+    res.status(200).json({
+      message: "Logout succeeded",
       requestId: res.locals.requestId,
     });
   };
 
   verifyEmail = async (req: Request, res: Response) => {
-    const user = await this.authService.verifyEmail({
+    const result = await this.authService.verifyEmail({
       token: String(req.query.token ?? ""),
     });
 
-    res.status(200).json({
-      message: "Email verified successfully",
-      user,
-      requestId: res.locals.requestId,
-    });
+    setSessionCookies(
+      res,
+      result.accessToken,
+      result.refreshToken,
+      this.authService.getAccessTokenMaxAgeMs(),
+      this.authService.getRefreshTokenMaxAgeMs(),
+    );
+
+    res.redirect(302, this.authService.getFrontendDashboardUrl());
   };
 
   resendVerificationEmail = async (req: Request, res: Response) => {
@@ -66,13 +124,42 @@ export class AuthController {
   };
 
   googleSignIn = async (req: Request, res: Response) => {
-    const user = await this.authService.signInWithGoogle({
+    const result = await this.authService.signInWithGoogle({
       idToken: req.body.idToken,
     });
 
+    setSessionCookies(
+      res,
+      result.accessToken,
+      result.refreshToken,
+      this.authService.getAccessTokenMaxAgeMs(),
+      this.authService.getRefreshTokenMaxAgeMs(),
+    );
+
     res.status(200).json({
       message: "Google sign-in succeeded",
-      user,
+      user: result.user,
+      requestId: res.locals.requestId,
+    });
+  };
+
+  linkGoogleAccount = async (req: Request, res: Response) => {
+    const result = await this.authService.linkGoogleAccount({
+      idToken: req.body.idToken,
+      password: req.body.password,
+    });
+
+    setSessionCookies(
+      res,
+      result.accessToken,
+      result.refreshToken,
+      this.authService.getAccessTokenMaxAgeMs(),
+      this.authService.getRefreshTokenMaxAgeMs(),
+    );
+
+    res.status(200).json({
+      message: "Google account linked successfully",
+      user: result.user,
       requestId: res.locals.requestId,
     });
   };

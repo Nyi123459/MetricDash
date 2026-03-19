@@ -15,8 +15,12 @@ import {
 } from "@/common/components/ui/card";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
+import { GoogleAuthButton } from "@/features/auth/components/google-auth-button";
 import { useRegister } from "@/features/auth/hooks/use-register";
-import { getApiErrorMessage } from "@/features/auth/services/auth-service";
+import {
+  getApiErrorMessage,
+  linkGoogleAccount,
+} from "@/features/auth/services/auth-service";
 import {
   registerSchema,
   type RegisterFormValues,
@@ -25,12 +29,12 @@ import {
 type FieldErrors = Partial<Record<keyof RegisterFormValues, string>>;
 
 const formState = {
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    agreeToTerms: true,
-}
+  name: "",
+  email: "",
+  password: "",
+  confirmPassword: "",
+  agreeToTerms: true,
+};
 
 export function RegisterForm() {
   const router = useRouter();
@@ -39,6 +43,9 @@ export function RegisterForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [serverMessage, setServerMessage] = useState<string | null>(null);
+  const [googleCredential, setGoogleCredential] = useState<string | null>(null);
+  const [linkPassword, setLinkPassword] = useState("");
+  const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
   const [formData, setFormData] = useState<RegisterFormValues>(formState);
 
   const strength = useMemo(() => {
@@ -79,7 +86,7 @@ export function RegisterForm() {
         email: parsed.data.email,
         password: parsed.data.password,
       });
-      setFormData(formState)
+      setFormData(formState);
       setServerMessage(
         "Account created. Check your inbox for the verification email.",
       );
@@ -88,6 +95,34 @@ export function RegisterForm() {
       setServerMessage(
         getApiErrorMessage(error, "Registration failed. Please try again."),
       );
+    }
+  }
+
+  async function handleGoogleLink(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!googleCredential) {
+      setServerMessage("Google sign-in session expired. Please try again.");
+      return;
+    }
+
+    setIsLinkingGoogle(true);
+
+    try {
+      await linkGoogleAccount({
+        idToken: googleCredential,
+        password: linkPassword,
+      });
+      setLinkPassword("");
+      setGoogleCredential(null);
+      router.push(APP_ROUTES.dashboard);
+      router.refresh();
+    } catch (error) {
+      setServerMessage(
+        getApiErrorMessage(error, "Account linking failed. Please try again."),
+      );
+    } finally {
+      setIsLinkingGoogle(false);
     }
   }
 
@@ -110,10 +145,6 @@ export function RegisterForm() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle>Register</CardTitle>
-            <CardDescription>
-              Referenced from your zip and rebuilt in a feature-based Next.js
-              structure.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -313,13 +344,45 @@ export function RegisterForm() {
                 <span className="h-px flex-1 bg-slate-200" />
               </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full rounded-2xl"
-              >
-                Continue with Google
-              </Button>
+              <GoogleAuthButton
+                context="signup"
+                onError={setServerMessage}
+                onLinkRequired={(credential, message) => {
+                  setGoogleCredential(credential);
+                  setServerMessage(message);
+                }}
+              />
+
+              {googleCredential ? (
+                <form
+                  onSubmit={handleGoogleLink}
+                  className="space-y-3 rounded-2xl border border-sky-200 bg-sky-50/80 p-4"
+                >
+                  <p className="text-sm text-sky-900">
+                    This email already has a MetricDash password account. Enter
+                    that password once to link Google sign-in for future use.
+                  </p>
+                  <div className="space-y-2">
+                    <Label htmlFor="google-register-link-password">
+                      Current password
+                    </Label>
+                    <Input
+                      id="google-register-link-password"
+                      type="password"
+                      value={linkPassword}
+                      onChange={(event) => setLinkPassword(event.target.value)}
+                      placeholder="Enter your current password"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full rounded-2xl"
+                    disabled={isLinkingGoogle}
+                  >
+                    {isLinkingGoogle ? "Linking Google..." : "Link Google"}
+                  </Button>
+                </form>
+              ) : null}
 
               <p className="text-center text-sm text-slate-600">
                 Already have an account?{" "}

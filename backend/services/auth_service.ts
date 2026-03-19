@@ -7,13 +7,17 @@ import { AppError } from "../exceptions/app-error";
 import { getPrismaClient } from "../lib/prisma";
 import {
   GoogleSignInInput,
+  LinkGoogleAccountInput,
   LoginUserInput,
+  LogoutInput,
+  RefreshSessionInput,
   RegisterUserInput,
   ResendVerificationInput,
   VerifyEmailInput,
 } from "../models/user";
 import { EmailVerificationTokenRepository } from "../repositories/email_verification_token_repository";
 import { OAuthAccountRepository } from "../repositories/oauth_account_repository";
+import { RefreshTokenRepository } from "../repositories/refresh_token_repository";
 import { UserRepository } from "../repositories/user_repository";
 import { EmailService } from "./email_service";
 
@@ -27,6 +31,7 @@ type RegisterResult = {
 type LoginResult = {
   user: SafeUser;
   accessToken: string;
+  refreshToken: string;
 };
 
 export class AuthService {
@@ -36,6 +41,7 @@ export class AuthService {
     private readonly userRepository: UserRepository,
     private readonly emailVerificationTokenRepository: EmailVerificationTokenRepository,
     private readonly oauthAccountRepository: OAuthAccountRepository,
+    private readonly refreshTokenRepository: RefreshTokenRepository,
     private readonly emailService: EmailService,
   ) {
     this.googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -143,13 +149,73 @@ export class AuthService {
       );
     }
 
-    return {
-      user: this.toSafeUser(user),
-      accessToken: this.signAccessToken(user),
-    };
+    return this.issueSession(user);
   }
 
-  async verifyEmail(input: VerifyEmailInput): Promise<SafeUser> {
+  async refreshSession(input: RefreshSessionInput): Promise<LoginResult> {
+    const refreshToken = input.refreshToken.trim();
+
+    if (!refreshToken) {
+      throw new AppError(
+        401,
+        "REFRESH_TOKEN_REQUIRED",
+        "Refresh token is required",
+      );
+    }
+
+    const storedRefreshToken = await this.findValidRefreshToken(refreshToken);
+
+    if (!storedRefreshToken) {
+      throw new AppError(
+        401,
+        "REFRESH_TOKEN_INVALID",
+        "Refresh token is invalid",
+      );
+    }
+
+    if (storedRefreshToken.expires_at <= new Date()) {
+      await this.refreshTokenRepository.update(storedRefreshToken.id, {
+        revoked_at: new Date(),
+      });
+      throw new AppError(
+        401,
+        "REFRESH_TOKEN_EXPIRED",
+        "Refresh token has expired",
+      );
+    }
+
+    const user = await this.userRepository.findById(storedRefreshToken.user_id);
+
+    if (!user) {
+      throw new AppError(404, "USER_NOT_FOUND", "User was not found");
+    }
+
+    await this.refreshTokenRepository.update(storedRefreshToken.id, {
+      revoked_at: new Date(),
+    });
+
+    return this.issueSession(user);
+  }
+
+  async logout(input: LogoutInput): Promise<void> {
+    const refreshToken = input.refreshToken?.trim();
+
+    if (!refreshToken) {
+      return;
+    }
+
+    const storedRefreshToken = await this.findValidRefreshToken(refreshToken);
+
+    if (!storedRefreshToken) {
+      return;
+    }
+
+    await this.refreshTokenRepository.update(storedRefreshToken.id, {
+      revoked_at: new Date(),
+    });
+  }
+
+  async verifyEmail(input: VerifyEmailInput): Promise<LoginResult> {
     const token = input.token.trim();
 
     if (!token) {
@@ -209,7 +275,7 @@ export class AuthService {
       throw new AppError(404, "USER_NOT_FOUND", "User was not found");
     }
 
-    return this.toSafeUser(updatedUser);
+    return this.issueSession(updatedUser);
   }
 
   async resendVerificationEmail(input: ResendVerificationInput) {
@@ -235,43 +301,10 @@ export class AuthService {
     return { verificationToken };
   }
 
-  async signInWithGoogle(input: GoogleSignInInput): Promise<SafeUser> {
-    const idToken = input.idToken.trim();
-
-    if (!idToken) {
-      throw new AppError(
-        400,
-        "ID_TOKEN_REQUIRED",
-        "Google ID token is required",
-      );
-    }
-
-    if (!process.env.GOOGLE_CLIENT_ID) {
-      throw new AppError(
-        500,
-        "GOOGLE_AUTH_NOT_CONFIGURED",
-        "Google auth is not configured",
-      );
-    }
-
-    const ticket = await this.googleClient.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-
-    const payload = ticket.getPayload();
-
-    if (!payload?.sub || !payload.email) {
-      throw new AppError(
-        400,
-        "GOOGLE_PROFILE_INCOMPLETE",
-        "Google account did not return a usable profile",
-      );
-    }
-
-    const providerUserId = payload.sub;
-    const email = payload.email.toLowerCase();
-    const name = payload.name ?? null;
+  async signInWithGoogle(input: GoogleSignInInput): Promise<LoginResult> {
+    const googleIdentity = await this.verifyGoogleIdentity(input.idToken);
+    const { providerUserId, email, name, isGoogleAuthoritative } =
+      googleIdentity;
 
     const existingOAuthAccount = await this.oauthAccountRepository.findOne({
       filter: {
@@ -299,15 +332,26 @@ export class AuthService {
         throw new AppError(404, "USER_NOT_FOUND", "User was not found");
       }
 
-      return this.toSafeUser(existingUser);
+      return this.issueSession(existingUser);
     }
 
     const existingEmailUser = await this.findUserByEmail(email);
+    if (existingEmailUser && isGoogleAuthoritative) {
+      await this.oauthAccountRepository.create({
+        user_id: existingEmailUser.id,
+        provider: OAuthProvider.GOOGLE,
+        provider_user_id: providerUserId,
+        email,
+      });
+
+      return this.issueSession(existingEmailUser);
+    }
+
     if (existingEmailUser) {
       throw new AppError(
         409,
-        "ACCOUNT_ALREADY_EXISTS",
-        "An account with this email already exists. Sign in with email/password first, then add Google linking later.",
+        "GOOGLE_LINK_REQUIRED",
+        "A password account already exists for this email. Enter your password once to link Google sign-in.",
       );
     }
 
@@ -325,7 +369,80 @@ export class AuthService {
       email,
     });
 
-    return this.toSafeUser(createdUser);
+    return this.issueSession(createdUser);
+  }
+
+  async linkGoogleAccount(input: LinkGoogleAccountInput): Promise<LoginResult> {
+    const password = input.password.trim();
+
+    if (!password) {
+      throw new AppError(400, "PASSWORD_REQUIRED", "Password is required");
+    }
+
+    const googleIdentity = await this.verifyGoogleIdentity(input.idToken);
+    const { providerUserId, email } = googleIdentity;
+
+    const existingOAuthAccount = await this.oauthAccountRepository.findOne({
+      filter: {
+        groups: [
+          {
+            conditions: [
+              { field: "provider", operator: "=", value: OAuthProvider.GOOGLE },
+              {
+                field: "provider_user_id",
+                operator: "=",
+                value: providerUserId,
+              },
+            ],
+            logic: "and",
+          },
+        ],
+      },
+    });
+
+    if (existingOAuthAccount) {
+      const existingUser = await this.userRepository.findById(
+        existingOAuthAccount.user_id,
+      );
+
+      if (!existingUser) {
+        throw new AppError(404, "USER_NOT_FOUND", "User was not found");
+      }
+
+      return this.issueSession(existingUser);
+    }
+
+    const existingEmailUser = await this.findUserByEmail(email);
+
+    if (!existingEmailUser || !existingEmailUser.password_hash) {
+      throw new AppError(
+        404,
+        "ACCOUNT_NOT_FOUND",
+        "No password account was found for this email",
+      );
+    }
+
+    const passwordMatches = await this.verifyPassword(
+      password,
+      existingEmailUser.password_hash,
+    );
+
+    if (!passwordMatches) {
+      throw new AppError(
+        401,
+        "INVALID_CREDENTIALS",
+        "Invalid email or password",
+      );
+    }
+
+    await this.oauthAccountRepository.create({
+      user_id: existingEmailUser.id,
+      provider: OAuthProvider.GOOGLE,
+      provider_user_id: providerUserId,
+      email,
+    });
+
+    return this.issueSession(existingEmailUser);
   }
 
   async verifyPassword(plainTextPassword: string, passwordHash: string) {
@@ -350,10 +467,51 @@ export class AuthService {
       },
       secret,
       {
-        expiresIn: (process.env.JWT_EXPIRES_IN ??
-          "1d") as SignOptions["expiresIn"],
+        expiresIn: (process.env.JWT_ACCESS_EXPIRES_IN ??
+          process.env.JWT_EXPIRES_IN ??
+          "15m") as SignOptions["expiresIn"],
       } satisfies SignOptions,
     );
+  }
+
+  private async issueSession(user: User): Promise<LoginResult> {
+    const refreshToken = randomBytes(48).toString("hex");
+    const refreshTokenHash = this.hashRefreshToken(refreshToken);
+
+    await this.refreshTokenRepository.create({
+      user_id: user.id,
+      token_hash: refreshTokenHash,
+      expires_at: this.getRefreshTokenExpiryDate(),
+      revoked_at: null,
+    });
+
+    return {
+      user: this.toSafeUser(user),
+      accessToken: this.signAccessToken(user),
+      refreshToken,
+    };
+  }
+
+  private async findValidRefreshToken(rawRefreshToken: string) {
+    return this.refreshTokenRepository.findOne({
+      filter: {
+        groups: [
+          {
+            conditions: [
+              {
+                field: "token_hash",
+                operator: "=",
+                value: this.hashRefreshToken(rawRefreshToken),
+              },
+              {
+                field: "revoked_at",
+                operator: "isNull",
+              },
+            ],
+          },
+        ],
+      },
+    });
   }
 
   private async findUserByEmail(email: string) {
@@ -400,14 +558,107 @@ export class AuthService {
     return `${baseUrl}/api/v1/auth/verify-email?token=${token}`;
   }
 
+  getFrontendDashboardUrl() {
+    const frontendBaseUrl =
+      process.env.FRONTEND_APP_URL ?? "http://localhost:3000";
+    return `${frontendBaseUrl}/dashboard`;
+  }
+
   private getVerificationExpiryDate() {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);
     return expiresAt;
   }
 
+  getAccessTokenMaxAgeMs() {
+    return this.parseDurationToMs(process.env.JWT_ACCESS_EXPIRES_IN ?? "15m");
+  }
+
+  getRefreshTokenMaxAgeMs() {
+    return this.parseDurationToMs(process.env.REFRESH_TOKEN_EXPIRES_IN ?? "1d");
+  }
+
+  private getRefreshTokenExpiryDate() {
+    return new Date(Date.now() + this.getRefreshTokenMaxAgeMs());
+  }
+
   private hashVerificationToken(token: string) {
     return createHash("sha256").update(token).digest("hex");
+  }
+
+  private hashRefreshToken(token: string) {
+    return createHash("sha256").update(token).digest("hex");
+  }
+
+  private async verifyGoogleIdentity(idTokenInput: string) {
+    const idToken = idTokenInput.trim();
+
+    if (!idToken) {
+      throw new AppError(
+        400,
+        "ID_TOKEN_REQUIRED",
+        "Google ID token is required",
+      );
+    }
+
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      throw new AppError(
+        500,
+        "GOOGLE_AUTH_NOT_CONFIGURED",
+        "Google auth is not configured",
+      );
+    }
+
+    const ticket = await this.googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    if (!payload?.sub || !payload.email) {
+      throw new AppError(
+        400,
+        "GOOGLE_PROFILE_INCOMPLETE",
+        "Google account did not return a usable profile",
+      );
+    }
+
+    const email = payload.email.toLowerCase();
+
+    return {
+      providerUserId: payload.sub,
+      email,
+      name: payload.name ?? null,
+      isGoogleAuthoritative:
+        email.endsWith("@gmail.com") ||
+        Boolean(payload.email_verified && payload.hd),
+    };
+  }
+
+  private parseDurationToMs(duration: string) {
+    const trimmed = duration.trim().toLowerCase();
+    const match = /^(\d+)(ms|s|m|h|d)$/.exec(trimmed);
+
+    if (!match) {
+      throw new AppError(
+        500,
+        "JWT_DURATION_INVALID",
+        `Unsupported auth duration format: ${duration}`,
+      );
+    }
+
+    const value = Number(match[1]);
+    const unit = match[2];
+    const multipliers: Record<string, number> = {
+      ms: 1,
+      s: 1000,
+      m: 60 * 1000,
+      h: 60 * 60 * 1000,
+      d: 24 * 60 * 60 * 1000,
+    };
+
+    return value * multipliers[unit];
   }
 
   private validateRegistrationInput(input: RegisterUserInput) {

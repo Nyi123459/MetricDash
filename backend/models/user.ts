@@ -9,6 +9,14 @@ export interface LoginUserInput {
   password: string;
 }
 
+export interface RefreshSessionInput {
+  refreshToken: string;
+}
+
+export interface LogoutInput {
+  refreshToken?: string | null;
+}
+
 export interface VerifyEmailInput {
   token: string;
 }
@@ -19,4 +27,9 @@ export interface ResendVerificationInput {
 
 export interface GoogleSignInInput {
   idToken: string;
+}
+
+export interface LinkGoogleAccountInput {
+  idToken: string;
+  password: string;
 }

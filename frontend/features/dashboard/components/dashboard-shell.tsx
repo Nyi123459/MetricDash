@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Activity, KeyRound, LogOut, ShieldCheck, Zap } from "lucide-react";
 import { APP_ROUTES } from "@/common/constants/routes";
 import { Button } from "@/common/components/ui/button";
@@ -11,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
-import { clearAuthToken } from "@/features/auth/hooks/use-auth-session";
+import { logout } from "@/features/auth/services/auth-service";
 
 type DashboardShellProps = {
   userEmail?: string;
@@ -41,11 +42,19 @@ const dashboardStats = [
 
 export function DashboardShell({ userEmail }: DashboardShellProps) {
   const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  function handleLogout() {
-    clearAuthToken();
-    router.push(APP_ROUTES.login);
-    router.refresh();
+  async function handleLogout() {
+    setIsLoggingOut(true);
+
+    try {
+      await logout();
+    } catch {
+    } finally {
+      setIsLoggingOut(false);
+      router.push(APP_ROUTES.login);
+      router.refresh();
+    }
   }
 
   return (
@@ -79,9 +88,10 @@ export function DashboardShell({ userEmail }: DashboardShellProps) {
               variant="outline"
               className="rounded-2xl"
               onClick={handleLogout}
+              disabled={isLoggingOut}
             >
               <LogOut className="size-4" />
-              Log out
+              {isLoggingOut ? "Logging out..." : "Log out"}
             </Button>
           </div>
         </header>
@@ -94,7 +104,7 @@ export function DashboardShell({ userEmail }: DashboardShellProps) {
             <CardContent className="space-y-4 text-sm text-slate-600">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 Build `GET /api/v1/auth/me` next so this shell can validate the
-                token against the backend instead of only checking cookie
+                session against the backend instead of only checking cookie
                 presence.
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">

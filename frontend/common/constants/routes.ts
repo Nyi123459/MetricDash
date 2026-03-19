@@ -5,4 +5,5 @@ export const APP_ROUTES = {
   dashboard: "/dashboard",
 } as const;
 
-export const AUTH_COOKIE_NAME = "metricdash_token";
+export const ACCESS_TOKEN_COOKIE_NAME = "metricdash_access_token";
+export const REFRESH_TOKEN_COOKIE_NAME = "metricdash_refresh_token";

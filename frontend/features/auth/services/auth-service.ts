@@ -22,6 +22,15 @@ export type LoginRequest = {
   password: string;
 };
 
+export type GoogleSignInRequest = {
+  idToken: string;
+};
+
+export type GoogleLinkRequest = {
+  idToken: string;
+  password: string;
+};
+
 export type RegisterResponse = {
   message: string;
   requiresEmailVerification: boolean;
@@ -32,7 +41,15 @@ export type RegisterResponse = {
 export type LoginResponse = {
   message: string;
   user: AuthUser;
-  accessToken: string;
+};
+
+export type RefreshResponse = {
+  message: string;
+  user: AuthUser;
+};
+
+export type LogoutResponse = {
+  message: string;
 };
 
 export type ApiErrorResponse = {
@@ -58,6 +75,34 @@ export async function login(payload: LoginRequest) {
   return response.data;
 }
 
+export async function googleSignIn(payload: GoogleSignInRequest) {
+  const response = await apiClient.post<LoginResponse>(
+    "/api/v1/auth/google",
+    payload,
+  );
+  return response.data;
+}
+
+export async function linkGoogleAccount(payload: GoogleLinkRequest) {
+  const response = await apiClient.post<LoginResponse>(
+    "/api/v1/auth/google/link",
+    payload,
+  );
+  return response.data;
+}
+
+export async function refreshSession() {
+  const response = await apiClient.post<RefreshResponse>(
+    "/api/v1/auth/refresh",
+  );
+  return response.data;
+}
+
+export async function logout() {
+  const response = await apiClient.post<LogoutResponse>("/api/v1/auth/logout");
+  return response.data;
+}
+
 export function getApiErrorMessage(error: unknown, fallback: string) {
   if (error instanceof AxiosError) {
     return (
@@ -67,4 +112,12 @@ export function getApiErrorMessage(error: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+export function getApiErrorCode(error: unknown) {
+  if (error instanceof AxiosError) {
+    return (error.response?.data as ApiErrorResponse | undefined)?.error?.code;
+  }
+
+  return undefined;
 }

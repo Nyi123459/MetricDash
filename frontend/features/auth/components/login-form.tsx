@@ -15,9 +15,12 @@ import {
 } from "@/common/components/ui/card";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
+import { GoogleAuthButton } from "@/features/auth/components/google-auth-button";
 import { useLogin } from "@/features/auth/hooks/use-login";
-import { setAuthToken } from "@/features/auth/hooks/use-auth-session";
-import { getApiErrorMessage } from "@/features/auth/services/auth-service";
+import {
+  getApiErrorMessage,
+  linkGoogleAccount,
+} from "@/features/auth/services/auth-service";
 import {
   loginSchema,
   type LoginFormValues,
@@ -31,6 +34,9 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [serverMessage, setServerMessage] = useState<string | null>(null);
+  const [googleCredential, setGoogleCredential] = useState<string | null>(null);
+  const [linkPassword, setLinkPassword] = useState("");
+  const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
   const [formData, setFormData] = useState<LoginFormValues>({
     email: "",
     password: "",
@@ -60,15 +66,42 @@ export function LoginForm() {
     setFieldErrors({});
 
     try {
-      const response = await loginMutation.mutateAsync(parsed.data);
-      setFormData({email: "", password: ""});
-      setAuthToken(response.accessToken);
+      await loginMutation.mutateAsync(parsed.data);
+      setFormData({ email: "", password: "" });
       router.push(APP_ROUTES.dashboard);
       router.refresh();
     } catch (error) {
       setServerMessage(
         getApiErrorMessage(error, "Login failed. Please try again."),
       );
+    }
+  }
+
+  async function handleGoogleLink(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!googleCredential) {
+      setServerMessage("Google sign-in session expired. Please try again.");
+      return;
+    }
+
+    setIsLinkingGoogle(true);
+
+    try {
+      await linkGoogleAccount({
+        idToken: googleCredential,
+        password: linkPassword,
+      });
+      setLinkPassword("");
+      setGoogleCredential(null);
+      router.push(APP_ROUTES.dashboard);
+      router.refresh();
+    } catch (error) {
+      setServerMessage(
+        getApiErrorMessage(error, "Account linking failed. Please try again."),
+      );
+    } finally {
+      setIsLinkingGoogle(false);
     }
   }
 
@@ -179,6 +212,52 @@ export function LoginForm() {
               >
                 {loginMutation.isPending ? "Signing in..." : "Sign in"}
               </Button>
+
+              <div className="flex items-center gap-3 text-xs uppercase tracking-[0.22em] text-slate-400">
+                <span className="h-px flex-1 bg-slate-200" />
+                Or continue with
+                <span className="h-px flex-1 bg-slate-200" />
+              </div>
+
+              <GoogleAuthButton
+                context="signin"
+                onError={setServerMessage}
+                onLinkRequired={(credential, message) => {
+                  setGoogleCredential(credential);
+                  setServerMessage(message);
+                }}
+              />
+
+              {googleCredential ? (
+                <form
+                  onSubmit={handleGoogleLink}
+                  className="space-y-3 rounded-2xl border border-sky-200 bg-sky-50/80 p-4"
+                >
+                  <p className="text-sm text-sky-900">
+                    Enter your MetricDash password once to link this Google
+                    account. Future Google sign-ins will work without it.
+                  </p>
+                  <div className="space-y-2">
+                    <Label htmlFor="google-link-password">
+                      Current password
+                    </Label>
+                    <Input
+                      id="google-link-password"
+                      type="password"
+                      value={linkPassword}
+                      onChange={(event) => setLinkPassword(event.target.value)}
+                      placeholder="Enter your current password"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full rounded-2xl"
+                    disabled={isLinkingGoogle}
+                  >
+                    {isLinkingGoogle ? "Linking Google..." : "Link Google"}
+                  </Button>
+                </form>
+              ) : null}
 
               <p className="text-center text-sm text-slate-600">
                 New to MetricDash?{" "}
