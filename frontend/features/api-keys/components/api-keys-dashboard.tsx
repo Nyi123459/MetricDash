@@ -197,10 +197,6 @@ export function ApiKeysDashboard() {
                   <p className="text-xs uppercase tracking-[0.22em] text-cyan-300">
                     Auth route
                   </p>
-                  <p className="mt-3 flex items-center gap-2 text-lg font-medium">
-                    <ShieldCheck className="size-5 text-emerald-300" />
-                    `/api/v1/public/ping`
-                  </p>
                 </div>
               </CardContent>
             </Card>
