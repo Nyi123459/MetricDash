@@ -165,13 +165,6 @@ export function ApiKeysDashboard() {
                     </div>
                   ) : null}
 
-                  <div className="rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3 text-sm text-cyan-950">
-                    Keys expire automatically under the backend policy. The
-                    current default is 90 days unless the server owner changes
-                    `API_KEY_TTL_DAYS`. Rate limits are also assigned by the
-                    system, with new keys starting at 60 rpm.
-                  </div>
-
                   <Button
                     type="submit"
                     size="lg"
