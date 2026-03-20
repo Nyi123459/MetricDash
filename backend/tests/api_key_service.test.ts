@@ -1,5 +1,4 @@
 import { ApiKeyService } from "../services/api_key_service";
-import { AppError } from "../exceptions/app-error";
 
 type ApiKeyRecord = {
   id: number;
@@ -17,6 +16,13 @@ type ApiKeyRecord = {
 
 function createApiKeyServiceFixture() {
   const apiKeys: ApiKeyRecord[] = [];
+  const apiKeyMetadataCache = {
+    get: jest.fn<Promise<ApiKeyRecord | null>, [string]>(
+      async (_keyHash: string) => null,
+    ),
+    set: jest.fn(async (_apiKey: ApiKeyRecord) => undefined),
+    delete: jest.fn(async (_keyHash: string) => undefined),
+  };
 
   const apiKeyRepository = {
     create: jest.fn(async (data: Partial<ApiKeyRecord>) => {
@@ -106,7 +112,12 @@ function createApiKeyServiceFixture() {
 
   return {
     apiKeys,
-    apiKeyService: new ApiKeyService(apiKeyRepository as never),
+    apiKeyMetadataCache,
+    apiKeyRepository,
+    apiKeyService: new ApiKeyService(
+      apiKeyRepository as never,
+      apiKeyMetadataCache as never,
+    ),
   };
 }
 
@@ -117,13 +128,14 @@ describe("ApiKeyService", () => {
     const result = await fixture.apiKeyService.create({
       userId: 1,
       name: "Production bot",
-      requestsPerMinute: 120,
     });
 
     expect(result.secret).toMatch(/^md_live_/);
     expect(result.apiKey.name).toBe("Production bot");
     expect(result.apiKey.key_prefix).toBe(result.secret.slice(0, 15));
     expect(fixture.apiKeys[0]?.key_hash).not.toBe(result.secret);
+    expect(result.apiKey.requests_per_minute).toBe(60);
+    expect(result.apiKey.expires_at).toBeInstanceOf(Date);
   });
 
   it("revokes an owned API key", async () => {
@@ -153,6 +165,7 @@ describe("ApiKeyService", () => {
     });
 
     expect(authenticated.apiKey.last_used_at).toBeInstanceOf(Date);
+    expect(fixture.apiKeyMetadataCache.set).toHaveBeenCalled();
   });
 
   it("rejects invalid API keys", async () => {
@@ -163,5 +176,38 @@ describe("ApiKeyService", () => {
     ).rejects.toMatchObject({
       code: "API_KEY_INVALID",
     });
+  });
+
+  it("uses cached API key metadata during authentication", async () => {
+    const fixture = createApiKeyServiceFixture();
+    const created = await fixture.apiKeyService.create({
+      userId: 1,
+      name: "Cached key",
+    });
+
+    fixture.apiKeyMetadataCache.get.mockResolvedValueOnce(fixture.apiKeys[0]);
+
+    await fixture.apiKeyService.authenticate({
+      rawApiKey: created.secret,
+    });
+
+    expect(fixture.apiKeyRepository.findOne).not.toHaveBeenCalled();
+  });
+
+  it("invalidates cached metadata when a key is revoked", async () => {
+    const fixture = createApiKeyServiceFixture();
+    const created = await fixture.apiKeyService.create({
+      userId: 1,
+      name: "Production bot",
+    });
+
+    await fixture.apiKeyService.revoke({
+      userId: 1,
+      apiKeyId: created.apiKey.id,
+    });
+
+    expect(fixture.apiKeyMetadataCache.delete).toHaveBeenCalledWith(
+      fixture.apiKeys[0]?.key_hash,
+    );
   });
 });

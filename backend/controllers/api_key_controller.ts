@@ -8,8 +8,6 @@ export class ApiKeyController {
     const result = await this.apiKeyService.create({
       userId: res.locals.authenticatedUserId,
       name: req.body.name,
-      requestsPerMinute: req.body.requestsPerMinute,
-      expiresAt: req.body.expiresAt,
     });
 
     res.status(201).json({

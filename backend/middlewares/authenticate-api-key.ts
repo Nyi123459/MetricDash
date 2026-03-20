@@ -1,10 +1,12 @@
 import { NextFunction, Request, Response } from "express";
+import { RedisApiKeyMetadataCache } from "../infrastructure/cache/redis_api_key_metadata_cache";
 import { AppError } from "../exceptions/app-error";
 import { ApiKeyRepository } from "../repositories/api_key_repository";
 import { ApiKeyService } from "../services/api_key_service";
 
 const apiKeyRepository = new ApiKeyRepository();
-const apiKeyService = new ApiKeyService(apiKeyRepository);
+const apiKeyMetadataCache = new RedisApiKeyMetadataCache();
+const apiKeyService = new ApiKeyService(apiKeyRepository, apiKeyMetadataCache);
 
 export async function authenticateApiKey(
   req: Request,

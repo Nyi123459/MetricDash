@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "crypto";
 import { ApiKey } from "@prisma/client";
+import { ApiKeyMetadataCache } from "../contracts/api_key_metadata_cache";
 import { AppError } from "../exceptions/app-error";
 import {
   AuthenticateApiKeyInput,
@@ -22,7 +23,12 @@ type AuthenticatedApiKeyResult = {
 };
 
 export class ApiKeyService {
-  constructor(private readonly apiKeyRepository: ApiKeyRepository) {}
+  private static readonly DEFAULT_REQUESTS_PER_MINUTE = 60;
+
+  constructor(
+    private readonly apiKeyRepository: ApiKeyRepository,
+    private readonly apiKeyMetadataCache?: ApiKeyMetadataCache,
+  ) {}
 
   async create(input: CreateApiKeyInput): Promise<CreateApiKeyResult> {
     const name = input.name.trim();
@@ -43,17 +49,6 @@ export class ApiKeyService {
       );
     }
 
-    const requestsPerMinute = input.requestsPerMinute ?? 60;
-
-    if (!Number.isInteger(requestsPerMinute) || requestsPerMinute <= 0) {
-      throw new AppError(
-        400,
-        "API_KEY_RATE_LIMIT_INVALID",
-        "Requests per minute must be a positive integer",
-      );
-    }
-
-    const expiresAt = this.parseExpiryDate(input.expiresAt);
     const secret = this.generateRawApiKey();
 
     const createdApiKey = await this.apiKeyRepository.create({
@@ -61,8 +56,8 @@ export class ApiKeyService {
       name,
       key_prefix: this.getKeyPrefix(secret),
       key_hash: this.hashApiKey(secret),
-      requests_per_minute: requestsPerMinute,
-      expires_at: expiresAt,
+      requests_per_minute: ApiKeyService.DEFAULT_REQUESTS_PER_MINUTE,
+      expires_at: this.getSystemManagedExpiryDate(),
       revoked_at: null,
       last_used_at: null,
     });
@@ -117,6 +112,8 @@ export class ApiKeyService {
       throw new AppError(404, "API_KEY_NOT_FOUND", "API key was not found");
     }
 
+    await this.apiKeyMetadataCache?.delete(apiKey.key_hash);
+
     return this.toPublicApiKey(revokedApiKey);
   }
 
@@ -129,32 +126,47 @@ export class ApiKeyService {
       throw new AppError(401, "API_KEY_REQUIRED", "API key is required");
     }
 
-    const apiKey = await this.apiKeyRepository.findOne({
-      filter: {
-        groups: [
-          {
-            conditions: [
-              {
-                field: "key_hash",
-                operator: "=",
-                value: this.hashApiKey(rawApiKey),
-              },
-            ],
-          },
-        ],
-      },
-    });
+    const keyHash = this.hashApiKey(rawApiKey);
+
+    const apiKey =
+      (await this.apiKeyMetadataCache?.get(keyHash)) ??
+      (await this.apiKeyRepository.findOne({
+        filter: {
+          groups: [
+            {
+              conditions: [
+                {
+                  field: "key_hash",
+                  operator: "=",
+                  value: keyHash,
+                },
+              ],
+            },
+          ],
+        },
+      }));
 
     if (!apiKey) {
       throw new AppError(401, "API_KEY_INVALID", "API key is invalid");
     }
 
+    if (apiKey.key_hash !== keyHash) {
+      await this.apiKeyMetadataCache?.delete(keyHash);
+      throw new AppError(401, "API_KEY_INVALID", "API key is invalid");
+    }
+
     if (apiKey.revoked_at) {
+      await this.apiKeyMetadataCache?.delete(keyHash);
       throw new AppError(401, "API_KEY_REVOKED", "API key has been revoked");
     }
 
     if (apiKey.expires_at && apiKey.expires_at <= new Date()) {
+      await this.apiKeyMetadataCache?.delete(keyHash);
       throw new AppError(401, "API_KEY_EXPIRED", "API key has expired");
+    }
+
+    if (!this.apiKeyMetadataCache || apiKey.last_used_at === null) {
+      await this.apiKeyMetadataCache?.set(apiKey);
     }
 
     await this.apiKeyRepository.update(apiKey.id, {
@@ -162,9 +174,12 @@ export class ApiKeyService {
     });
 
     const refreshedApiKey = await this.apiKeyRepository.findById(apiKey.id);
+    const authenticatedApiKey = refreshedApiKey ?? apiKey;
+
+    await this.apiKeyMetadataCache?.set(authenticatedApiKey);
 
     return {
-      apiKey: refreshedApiKey ?? apiKey,
+      apiKey: authenticatedApiKey,
     };
   }
 
@@ -196,22 +211,25 @@ export class ApiKeyService {
     return createHash("sha256").update(rawApiKey).digest("hex");
   }
 
-  private parseExpiryDate(expiresAt: string | null | undefined) {
-    if (!expiresAt) {
-      return null;
-    }
+  private getSystemManagedExpiryDate() {
+    const configuredTtlDays = Number(process.env.API_KEY_TTL_DAYS ?? "90");
 
-    const parsed = new Date(expiresAt);
-
-    if (Number.isNaN(parsed.getTime())) {
+    if (
+      !Number.isInteger(configuredTtlDays) ||
+      configuredTtlDays <= 0 ||
+      configuredTtlDays > 365
+    ) {
       throw new AppError(
-        400,
-        "API_KEY_EXPIRY_INVALID",
-        "API key expiry must be a valid ISO datetime",
+        500,
+        "API_KEY_TTL_INVALID",
+        "API key TTL configuration must be an integer between 1 and 365 days",
       );
     }
 
-    return parsed;
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + configuredTtlDays);
+
+    return expiresAt;
   }
 
   private toPublicApiKey(apiKey: ApiKey): ApiKeyRecord {

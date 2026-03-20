@@ -10,3 +10,4 @@ frontend/dist/
 !.env.example
 
 docs
+AGENTS.md

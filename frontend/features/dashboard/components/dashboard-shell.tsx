@@ -28,8 +28,8 @@ const dashboardStats = [
   },
   {
     label: "API keys",
-    value: "0",
-    description: "Create and revoke keys from the next dashboard slice.",
+    value: "Live",
+    description: "Create, reveal once, and revoke keys from the API key page.",
     icon: KeyRound,
   },
   {
@@ -108,8 +108,14 @@ export function DashboardShell({ userEmail }: DashboardShellProps) {
                 presence.
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                Add API key management and usage widgets once the authenticated
-                backend routes are ready.
+                API key management now lives in its own dashboard slice at{" "}
+                <Link
+                  href={APP_ROUTES.dashboardApiKeys}
+                  className="font-medium text-sky-700 hover:text-sky-800"
+                >
+                  {APP_ROUTES.dashboardApiKeys}
+                </Link>
+                .
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 The current auth pages already call your real backend register
@@ -154,10 +160,10 @@ export function DashboardShell({ userEmail }: DashboardShellProps) {
                   and usage visibility.
                 </p>
                 <Link
-                  href={APP_ROUTES.home}
+                  href={APP_ROUTES.dashboardApiKeys}
                   className="mt-4 inline-flex text-sm font-medium text-sky-300 hover:text-sky-200"
                 >
-                  Return to landing page
+                  Open API keys page
                 </Link>
               </CardContent>
             </Card>

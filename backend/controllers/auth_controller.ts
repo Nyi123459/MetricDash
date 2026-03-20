@@ -35,7 +35,7 @@ export class AuthController {
       password: req.body.password,
     });
 
-    // console.log('Result', result)
+    console.log("Result", result);
 
     setSessionCookies(
       res,

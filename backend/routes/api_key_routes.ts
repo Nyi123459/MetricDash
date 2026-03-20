@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { ApiKeyController } from "../controllers/api_key_controller";
+import { RedisApiKeyMetadataCache } from "../infrastructure/cache/redis_api_key_metadata_cache";
 import { authenticateSession } from "../middlewares/authenticate-session";
 import { validateRequest } from "../middlewares/validate-request";
 import { ApiKeyRepository } from "../repositories/api_key_repository";
@@ -13,7 +14,8 @@ import {
 const apiKeyRouter = Router();
 
 const apiKeyRepository = new ApiKeyRepository();
-const apiKeyService = new ApiKeyService(apiKeyRepository);
+const apiKeyMetadataCache = new RedisApiKeyMetadataCache();
+const apiKeyService = new ApiKeyService(apiKeyRepository, apiKeyMetadataCache);
 const apiKeyController = new ApiKeyController(apiKeyService);
 
 apiKeyRouter.use(authenticateSession);

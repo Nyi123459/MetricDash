@@ -71,7 +71,7 @@ describe("API key routes", () => {
     await prisma.$disconnect();
   });
 
-  it("creates, lists, and revokes API keys for the authenticated user", async () => {
+  it("creates, lists, authenticates, and revokes API keys for the authenticated user", async () => {
     const loginResponse = await request(app)
       .post("/api/v1/auth/login")
       .send({ email: testEmail, password });
@@ -85,12 +85,13 @@ describe("API key routes", () => {
       .set("Cookie", sessionCookies)
       .send({
         name: "Production bot",
-        requestsPerMinute: 120,
       });
 
     expect(createResponse.status).toBe(201);
     expect(createResponse.body.secret).toMatch(/^md_live_/);
     expect(createResponse.body.apiKey.key_hash).toBeUndefined();
+    expect(createResponse.body.apiKey.expires_at).toBeTruthy();
+    expect(createResponse.body.apiKey.requests_per_minute).toBe(60);
 
     const apiKeyId = createResponse.body.apiKey.id;
 
@@ -107,11 +108,26 @@ describe("API key routes", () => {
       perPage: 10,
     });
 
+    const authenticatedResponse = await request(app)
+      .get("/api/v1/public/ping")
+      .set("Authorization", `Bearer ${createResponse.body.secret}`);
+
+    expect(authenticatedResponse.status).toBe(200);
+    expect(authenticatedResponse.body.data.apiKeyId).toBe(apiKeyId);
+    expect(authenticatedResponse.body.data.userId).toBeGreaterThan(0);
+
     const revokeResponse = await request(app)
       .post(`/api/v1/api-keys/${apiKeyId}/revoke`)
       .set("Cookie", sessionCookies);
 
     expect(revokeResponse.status).toBe(200);
     expect(revokeResponse.body.apiKey.revoked_at).toBeTruthy();
+
+    const revokedResponse = await request(app)
+      .get("/api/v1/public/ping")
+      .set("Authorization", `Bearer ${createResponse.body.secret}`);
+
+    expect(revokedResponse.status).toBe(401);
+    expect(revokedResponse.body.error.code).toBe("API_KEY_REVOKED");
   });
 });

@@ -1,5 +1,5 @@
-import { AxiosError } from "axios";
 import { apiClient } from "@/common/lib/api-client";
+import { getApiErrorCode, getApiErrorMessage } from "@/common/lib/api-errors";
 
 export type AuthUser = {
   id: number;
@@ -52,13 +52,6 @@ export type LogoutResponse = {
   message: string;
 };
 
-export type ApiErrorResponse = {
-  error?: {
-    code: string;
-    message: string;
-  };
-};
-
 export async function register(payload: RegisterRequest) {
   const response = await apiClient.post<RegisterResponse>(
     "/api/v1/auth/register",
@@ -103,21 +96,4 @@ export async function logout() {
   return response.data;
 }
 
-export function getApiErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof AxiosError) {
-    return (
-      (error.response?.data as ApiErrorResponse | undefined)?.error?.message ??
-      fallback
-    );
-  }
-
-  return fallback;
-}
-
-export function getApiErrorCode(error: unknown) {
-  if (error instanceof AxiosError) {
-    return (error.response?.data as ApiErrorResponse | undefined)?.error?.code;
-  }
-
-  return undefined;
-}
+export { getApiErrorCode, getApiErrorMessage };

@@ -6,15 +6,6 @@ export const createApiKeyBodySchema = z.object({
     .trim()
     .min(1, "API key name is required")
     .max(100, "API key name must be 100 characters or fewer"),
-  requestsPerMinute: z
-    .number({ error: "Requests per minute must be a positive integer" })
-    .int("Requests per minute must be a positive integer")
-    .positive("Requests per minute must be a positive integer")
-    .optional(),
-  expiresAt: z.iso
-    .datetime("API key expiry must be a valid ISO datetime")
-    .nullable()
-    .optional(),
 });
 
 export const listApiKeysQuerySchema = z.object({
