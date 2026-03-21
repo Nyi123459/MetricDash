@@ -1,4 +1,5 @@
 import { AppError } from "../exceptions/app-error";
+import { MetadataCache } from "../contracts/metadata_cache";
 import { GetMetadataInput, MetadataResponse } from "../models/metadata";
 
 type FetchLike = typeof fetch;
@@ -8,18 +9,42 @@ type JsonLdEntry = Record<string, unknown>;
 export class MetadataService {
   private static readonly FETCH_TIMEOUT_MS = 50000;
 
-  constructor(private readonly fetchImpl: FetchLike = fetch) {}
+  constructor(
+    private readonly fetchImpl: FetchLike = fetch,
+    private readonly metadataCache?: MetadataCache,
+  ) {}
 
   async getMetadata(input: GetMetadataInput): Promise<MetadataResponse> {
     const requestedUrl = this.normalizeInputUrl(input.url);
-    const page = await this.fetchPage(requestedUrl);
+    const cachedMetadata = await this.metadataCache?.get(requestedUrl);
 
-    return this.extractMetadata({
+    if (cachedMetadata) {
+      return {
+        ...cachedMetadata.metadata,
+        cache: {
+          hit: true,
+          ttl: cachedMetadata.ttl,
+        },
+      };
+    }
+
+    const page = await this.fetchPage(requestedUrl);
+    const metadata = this.extractMetadata({
       requestedUrl,
       finalUrl: page.finalUrl,
       contentType: page.contentType,
       html: page.html,
     });
+
+    await this.metadataCache?.set(requestedUrl, {
+      ...metadata,
+      cache: {
+        hit: false,
+        ttl: 0,
+      },
+    });
+
+    return metadata;
   }
 
   private normalizeInputUrl(rawUrl: string) {

@@ -20,6 +20,50 @@ function createMockResponse(input: {
 }
 
 describe("MetadataService", () => {
+  it("returns cached metadata without calling the upstream fetcher", async () => {
+    const metadataCache = {
+      get: jest.fn(async () => ({
+        metadata: {
+          url: "https://example.com/articles/test",
+          canonical_url: "https://example.com/articles/test",
+          title: "Cached title",
+          description: "Cached description",
+          image: null,
+          favicon: "https://example.com/favicon.ico",
+          site_name: "Example",
+          content_type: "article",
+          author: null,
+          published_at: null,
+          cache: {
+            hit: false,
+            ttl: 0,
+          },
+        },
+        ttl: 300,
+      })),
+      set: jest.fn(async () => undefined),
+      delete: jest.fn(async () => undefined),
+    };
+    const fetchMock = jest.fn();
+    const service = new MetadataService(
+      fetchMock as typeof fetch,
+      metadataCache as never,
+    );
+
+    const result = await service.getMetadata({
+      url: "https://example.com/articles/test",
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      title: "Cached title",
+      cache: {
+        hit: true,
+        ttl: 300,
+      },
+    });
+  });
+
   it("extracts and normalizes metadata from an HTML document", async () => {
     const fetchMock = jest.fn(async () =>
       createMockResponse({
@@ -46,7 +90,15 @@ describe("MetadataService", () => {
       }),
     );
 
-    const service = new MetadataService(fetchMock as typeof fetch);
+    const metadataCache = {
+      get: jest.fn(async () => null),
+      set: jest.fn(async () => undefined),
+      delete: jest.fn(async () => undefined),
+    };
+    const service = new MetadataService(
+      fetchMock as typeof fetch,
+      metadataCache as never,
+    );
     const result = await service.getMetadata({
       url: "https://example.com/articles/test#fragment",
     });
@@ -67,6 +119,7 @@ describe("MetadataService", () => {
         ttl: 0,
       },
     });
+    expect(metadataCache.set).toHaveBeenCalled();
   });
 
   it("rejects non-html responses", async () => {

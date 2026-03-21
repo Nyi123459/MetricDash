@@ -13,6 +13,11 @@ export class MetadataController {
       url: validatedQuery?.url ?? String(req.query.url ?? ""),
     });
 
+    res.locals.metadataCacheStatus = metadata.cache.hit ? "hit" : "miss";
+    res.locals.metadataNormalizedUrl = metadata.url;
+    res.locals.metadataCanonicalUrl = metadata.canonical_url;
+    res.locals.metadataContentType = metadata.content_type;
+
     res.status(200).json(metadata);
   };
 }

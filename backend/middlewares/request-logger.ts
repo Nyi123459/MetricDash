@@ -7,6 +7,7 @@ export function requestLogger(req: Request, res: Response, next: NextFunction) {
   const startedAt = Date.now();
 
   res.locals.requestId = requestId;
+  res.locals.requestStartedAt = startedAt;
   res.setHeader("X-Request-Id", requestId);
 
   res.on("finish", () => {

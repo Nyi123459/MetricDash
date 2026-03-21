@@ -27,6 +27,7 @@ export async function authenticateApiKey(
 
     res.locals.apiKeyId = result.apiKey.id;
     res.locals.apiKeyUserId = result.apiKey.user_id;
+    res.locals.apiKeyRequestsPerMinute = result.apiKey.requests_per_minute;
     next();
   } catch (error) {
     next(error);
