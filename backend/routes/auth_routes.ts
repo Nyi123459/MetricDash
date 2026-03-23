@@ -44,6 +44,8 @@ authRouter.post(
   authController.login,
 );
 
+authRouter.get("/me", authController.me);
+
 authRouter.post("/refresh", authController.refresh);
 
 authRouter.post("/logout", authController.logout);

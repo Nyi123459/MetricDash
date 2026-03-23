@@ -90,4 +90,40 @@ describe("Auth routes", () => {
     expect(logoutResponse.status).toBe(200);
     expect(logoutResponse.body.message).toBe("Logout succeeded");
   });
+
+  it("returns the current user and rejects old access tokens after logout", async () => {
+    const loginResponse = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: testEmail, password });
+
+    const loginCookies = Array.isArray(loginResponse.headers["set-cookie"])
+      ? loginResponse.headers["set-cookie"]
+      : [];
+
+    const meResponse = await request(app)
+      .get("/api/v1/auth/me")
+      .set("Cookie", loginCookies);
+
+    expect(meResponse.status).toBe(200);
+    expect(meResponse.body.user.email).toBe(testEmail);
+
+    const accessCookie = loginCookies.find((cookie) =>
+      cookie.startsWith("metricdash_access_token="),
+    );
+
+    expect(accessCookie).toBeTruthy();
+
+    const logoutResponse = await request(app)
+      .post("/api/v1/auth/logout")
+      .set("Cookie", loginCookies);
+
+    expect(logoutResponse.status).toBe(200);
+
+    const staleAccessResponse = await request(app)
+      .get("/api/v1/auth/me")
+      .set("Cookie", [accessCookie!]);
+
+    expect(staleAccessResponse.status).toBe(401);
+    expect(staleAccessResponse.body.error.code).toBe("AUTHENTICATION_REQUIRED");
+  });
 });

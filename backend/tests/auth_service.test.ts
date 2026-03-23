@@ -8,6 +8,7 @@ type UserRecord = {
   name: string | null;
   password_hash: string | null;
   is_email_verified: boolean;
+  token_version: number;
   stripe_customer_id: string | null;
   created_at: Date;
   updated_at: Date;
@@ -66,6 +67,7 @@ function createAuthServiceFixture() {
         name: data.name ?? null,
         password_hash: data.password_hash ?? null,
         is_email_verified: data.is_email_verified ?? false,
+        token_version: data.token_version ?? 0,
         stripe_customer_id: null,
         created_at: new Date(),
         updated_at: new Date(),
@@ -74,7 +76,30 @@ function createAuthServiceFixture() {
       users.push(user);
       return user;
     }),
-    update: jest.fn(),
+    update: jest.fn(async (id: number, data: Partial<UserRecord>) => {
+      const user = users.find((item) => item.id === id) ?? null;
+      const nextTokenVersion = (data as { token_version?: unknown })
+        .token_version;
+
+      if (!user) {
+        return null;
+      }
+
+      if (
+        typeof nextTokenVersion === "object" &&
+        nextTokenVersion !== null &&
+        "increment" in nextTokenVersion
+      ) {
+        user.token_version += Number(
+          (nextTokenVersion as { increment?: number }).increment ?? 0,
+        );
+      } else if (typeof nextTokenVersion === "number") {
+        user.token_version = nextTokenVersion;
+      }
+
+      Object.assign(user, data, { updated_at: new Date() });
+      return user;
+    }),
   };
 
   const refreshTokenRepository = {
@@ -278,5 +303,32 @@ describe("AuthService", () => {
 
     expect(secondSignIn.accessToken).toBeTruthy();
     expect(secondSignIn.refreshToken).toBeTruthy();
+  });
+
+  it("invalidates prior access tokens after logout by rotating token version", async () => {
+    const fixture = createAuthServiceFixture();
+    const passwordHash = await hash("secret123", 4);
+
+    await fixture.userRepository.create({
+      email: "user@example.com",
+      password_hash: passwordHash,
+      is_email_verified: true,
+      name: "Metric Dash",
+    });
+
+    const loginResult = await fixture.authService.login({
+      email: "user@example.com",
+      password: "secret123",
+    });
+
+    await fixture.authService.logout({
+      refreshToken: loginResult.refreshToken,
+    });
+
+    await expect(
+      fixture.authService.authenticateAccessToken(loginResult.accessToken),
+    ).rejects.toMatchObject({
+      code: "ACCESS_TOKEN_INVALID",
+    });
   });
 });

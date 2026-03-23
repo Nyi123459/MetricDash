@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AuthService } from "../services/auth_service";
 import {
+  ACCESS_TOKEN_COOKIE_NAME,
   clearSessionCookies,
   getCookieValue,
   REFRESH_TOKEN_COOKIE_NAME,
@@ -34,8 +35,6 @@ export class AuthController {
       email: req.body.email,
       password: req.body.password,
     });
-
-    console.log("Result", result);
 
     setSessionCookies(
       res,
@@ -87,6 +86,31 @@ export class AuthController {
 
     res.status(200).json({
       message: "Logout succeeded",
+      requestId: res.locals.requestId,
+    });
+  };
+
+  me = async (req: Request, res: Response) => {
+    const result = await this.authService.getCurrentSession({
+      accessToken: getCookieValue(req.headers.cookie, ACCESS_TOKEN_COOKIE_NAME),
+      refreshToken: getCookieValue(
+        req.headers.cookie,
+        REFRESH_TOKEN_COOKIE_NAME,
+      ),
+    });
+
+    if (result.accessToken && result.refreshToken) {
+      setSessionCookies(
+        res,
+        result.accessToken,
+        result.refreshToken,
+        this.authService.getAccessTokenMaxAgeMs(),
+        this.authService.getRefreshTokenMaxAgeMs(),
+      );
+    }
+
+    res.status(200).json({
+      user: result.user,
       requestId: res.locals.requestId,
     });
   };

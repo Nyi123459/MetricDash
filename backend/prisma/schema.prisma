@@ -32,6 +32,7 @@ model User {
   name                      String?
   password_hash             String?
   is_email_verified         Boolean                  @default(false)
+  token_version             Int                      @default(0)
   stripe_customer_id        String?
   api_keys                  ApiKey[]
   usage_records             UsageRecord[]

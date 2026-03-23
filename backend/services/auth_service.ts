@@ -34,6 +34,20 @@ type LoginResult = {
   refreshToken: string;
 };
 
+type SessionResult = {
+  user: SafeUser;
+  accessToken: string | null;
+  refreshToken: string | null;
+};
+
+type AccessTokenPayload = {
+  sub: string;
+  email: string;
+  tokenVersion: number;
+  iat?: number;
+  exp?: number;
+};
+
 export class AuthService {
   private readonly googleClient: OAuth2Client;
 
@@ -210,9 +224,66 @@ export class AuthService {
       return;
     }
 
+    await this.userRepository.update(storedRefreshToken.user_id, {
+      token_version: {
+        increment: 1,
+      },
+    } as never);
+
     await this.refreshTokenRepository.update(storedRefreshToken.id, {
       revoked_at: new Date(),
     });
+  }
+
+  async getCurrentSession(input: {
+    accessToken?: string | null;
+    refreshToken?: string | null;
+  }): Promise<SessionResult> {
+    const accessToken = input.accessToken?.trim() ?? "";
+
+    if (accessToken) {
+      const user = await this.getUserFromAccessToken(accessToken);
+
+      if (user) {
+        return {
+          user: this.toSafeUser(user),
+          accessToken: null,
+          refreshToken: null,
+        };
+      }
+    }
+
+    const refreshToken = input.refreshToken?.trim() ?? "";
+
+    if (!refreshToken) {
+      throw new AppError(
+        401,
+        "AUTHENTICATION_REQUIRED",
+        "Authentication is required",
+      );
+    }
+
+    const refreshedSession = await this.refreshSession({ refreshToken });
+
+    return {
+      user: refreshedSession.user,
+      accessToken: refreshedSession.accessToken,
+      refreshToken: refreshedSession.refreshToken,
+    };
+  }
+
+  async authenticateAccessToken(accessToken: string) {
+    const user = await this.getUserFromAccessToken(accessToken);
+
+    if (!user) {
+      throw new AppError(
+        401,
+        "ACCESS_TOKEN_INVALID",
+        "Access token is invalid",
+      );
+    }
+
+    return this.toSafeUser(user);
   }
 
   async verifyEmail(input: VerifyEmailInput): Promise<LoginResult> {
@@ -464,6 +535,7 @@ export class AuthService {
       {
         sub: String(user.id),
         email: user.email,
+        tokenVersion: user.token_version,
       },
       secret,
       {
@@ -490,6 +562,45 @@ export class AuthService {
       accessToken: this.signAccessToken(user),
       refreshToken,
     };
+  }
+
+  private async getUserFromAccessToken(accessToken: string) {
+    const secret = process.env.JWT_SECRET;
+
+    if (!secret) {
+      throw new AppError(
+        500,
+        "JWT_NOT_CONFIGURED",
+        "JWT secret is not configured",
+      );
+    }
+
+    try {
+      const payload = jwt.verify(accessToken, secret) as AccessTokenPayload;
+      const userId = Number(payload.sub);
+
+      if (!Number.isFinite(userId)) {
+        return null;
+      }
+
+      const user = await this.userRepository.findById(userId);
+
+      if (!user) {
+        return null;
+      }
+
+      if (user.email !== payload.email) {
+        return null;
+      }
+
+      if (user.token_version !== payload.tokenVersion) {
+        return null;
+      }
+
+      return user;
+    } catch {
+      return null;
+    }
   }
 
   private async findValidRefreshToken(rawRefreshToken: string) {
