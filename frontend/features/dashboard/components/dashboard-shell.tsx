@@ -1,175 +1,415 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Activity, KeyRound, LogOut, ShieldCheck, Zap } from "lucide-react";
-import { APP_ROUTES } from "@/common/constants/routes";
-import { Button } from "@/common/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/common/components/ui/card";
-import { logout } from "@/features/auth/services/auth-service";
+  Activity,
+  ArrowRight,
+  KeyRound,
+  ShieldCheck,
+  Sparkles,
+  Zap,
+} from "lucide-react";
+import { APP_ROUTES } from "@/common/constants/routes";
+import { getApiErrorMessage } from "@/common/lib/api-errors";
+import {
+  formatCount,
+  formatDateTime,
+  formatLatency,
+  formatPercentage,
+  formatShortDate,
+} from "@/features/dashboard/lib/dashboard-formatters";
+import { useDashboardOverview } from "@/features/dashboard/hooks/use-dashboard-data";
+import { MetadataPreviewPanel } from "@/features/dashboard/components/metadata-preview-panel";
+import { DashboardFrame } from "@/features/dashboard/components/dashboard-frame";
+import { DashboardMetricGrid } from "@/features/dashboard/components/dashboard-metric-grid";
+import { DashboardEmptyState } from "@/features/dashboard/components/dashboard-empty-state";
 
-type DashboardShellProps = {
-  userEmail?: string;
-};
-
-const dashboardStats = [
-  {
-    label: "Metadata requests",
-    value: "0",
-    description:
-      "Your first calls will appear here once the API key flow is live.",
-    icon: Activity,
-  },
-  {
-    label: "API keys",
-    value: "Live",
-    description: "Create, reveal once, and revoke keys from the API key page.",
-    icon: KeyRound,
-  },
-  {
-    label: "Verification status",
-    value: "Ready",
-    description: "This shell is protected by the frontend auth cookie.",
-    icon: ShieldCheck,
-  },
+const rangeOptions = [7, 14, 30] as const;
+const requestPipeline = [
+  "Validate key",
+  "Check cache",
+  "Fetch source",
+  "Normalize fields",
+  "Return payload",
 ];
 
-export function DashboardShell({ userEmail }: DashboardShellProps) {
-  const router = useRouter();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+export function DashboardShell() {
+  const [days, setDays] = useState<(typeof rangeOptions)[number]>(7);
+  const overviewQuery = useDashboardOverview(days);
 
-  async function handleLogout() {
-    setIsLoggingOut(true);
+  const summary = overviewQuery.data?.summary;
+  const summaryCards = summary
+    ? [
+        {
+          label: `Requests (${days}d)`,
+          value: formatCount(summary.totalRequests),
+          description: `${formatCount(summary.requestsToday)} recorded today.`,
+          icon: Activity,
+          tone: "sky" as const,
+        },
+        {
+          label: "Active API keys",
+          value: formatCount(summary.activeApiKeys),
+          description:
+            "Server-managed credentials currently allowed to call the API.",
+          icon: KeyRound,
+          tone: "emerald" as const,
+        },
+        {
+          label: "Cache hit rate",
+          value: formatPercentage(summary.cacheHitRate),
+          description: `${formatCount(summary.cacheHits)} hits vs ${formatCount(summary.cacheMisses)} misses.`,
+          icon: Zap,
+          tone: "amber" as const,
+        },
+        {
+          label: "Error rate",
+          value: formatPercentage(summary.errorRate),
+          description: `${formatCount(summary.errorCount)} requests ended with a client or upstream error.`,
+          icon: ShieldCheck,
+          tone: "rose" as const,
+        },
+      ]
+    : [];
 
-    try {
-      await logout();
-    } catch {
-    } finally {
-      setIsLoggingOut(false);
-      router.push(APP_ROUTES.login);
-      router.refresh();
-    }
-  }
+  const quickLinks = [
+    {
+      href: APP_ROUTES.dashboardApiKeys,
+      title: "Manage API keys",
+      description:
+        "Provision new credentials, reveal the secret once, and revoke access safely.",
+    },
+    {
+      href: APP_ROUTES.dashboardUsage,
+      title: "Inspect usage",
+      description:
+        "Review request volume, cache efficiency, and latency across the current window.",
+    },
+    {
+      href: APP_ROUTES.dashboardLogs,
+      title: "Investigate logs",
+      description:
+        "Open the request stream when a customer reports upstream failures or odd metadata.",
+    },
+    {
+      href: APP_ROUTES.dashboardBilling,
+      title: "Review billing",
+      description:
+        "See launch pricing, included usage, and the current monthly estimate before Stripe goes live.",
+    },
+  ];
+
+  const usageTrend = overviewQuery.data?.usageTrend ?? [];
+  const displayedUsageTrend = [...usageTrend].sort(
+    (left, right) =>
+      new Date(right.date).getTime() - new Date(left.date).getTime(),
+  );
+  const recentRequests = overviewQuery.data?.recentRequests ?? [];
+  const maxRequests = Math.max(
+    ...usageTrend.map((point) => point.requestCount),
+    1,
+  );
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#eff6ff_0%,#f8fafc_45%,#ffffff_100%)]">
-      <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-        <header className="mb-8 flex flex-col gap-4 rounded-[2rem] border border-white/70 bg-white/80 p-6 shadow-xl shadow-sky-950/5 backdrop-blur md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">
-              <Zap className="size-3.5" />
-              MetricDash
-            </div>
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
-              Dashboard shell
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm text-slate-600">
-              This is the protected frontend starting point for your link
-              intelligence product. The next slices can plug in API keys, usage
-              charts, logs, and billing.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 sm:block">
-              Signed in as{" "}
-              <span className="font-medium text-slate-900">
-                {userEmail ?? "authenticated user"}
-              </span>
-            </div>
-            <Button
+    <DashboardFrame
+      badge="Overview"
+      title="MetricDash command center"
+      description="Track authenticated traffic, cache behavior, reliability signals, and the latest request outcomes from the same dashboard shell."
+    >
+      <div className="space-y-6">
+        <div className="flex flex-wrap gap-2">
+          {rangeOptions.map((option) => (
+            <button
+              key={option}
               type="button"
-              variant="outline"
-              className="rounded-2xl"
-              onClick={handleLogout}
-              disabled={isLoggingOut}
+              className={
+                days === option
+                  ? "md-dashboard-button-primary inline-flex h-11 items-center justify-center px-4 text-sm font-semibold"
+                  : "md-dashboard-button-secondary inline-flex h-11 items-center justify-center px-4 text-sm font-semibold hover:bg-white"
+              }
+              onClick={() => setDays(option)}
             >
-              <LogOut className="size-4" />
-              {isLoggingOut ? "Logging out..." : "Log out"}
-            </Button>
-          </div>
-        </header>
+              Last {option} days
+            </button>
+          ))}
+        </div>
 
-        <main className="grid gap-6 lg:grid-cols-[1.4fr_0.9fr]">
-          <Card className="bg-white/90">
-            <CardHeader>
-              <CardTitle>Next implementation steps</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-slate-600">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                Build `GET /api/v1/auth/me` next so this shell can validate the
-                session against the backend instead of only checking cookie
-                presence.
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                API key management now lives in its own dashboard slice at{" "}
-                <Link
-                  href={APP_ROUTES.dashboardApiKeys}
-                  className="font-medium text-sky-700 hover:text-sky-800"
-                >
-                  {APP_ROUTES.dashboardApiKeys}
-                </Link>
-                .
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                The current auth pages already call your real backend register
-                and login endpoints with Axios, TanStack Query, and Zod
-                validation.
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid gap-6">
-            {dashboardStats.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <Card key={item.label} className="bg-white/90">
-                  <CardContent className="flex items-start gap-4 p-6">
-                    <div className="rounded-2xl bg-sky-100 p-3 text-sky-700">
-                      <Icon className="size-5" />
+        {overviewQuery.isLoading ? (
+          <DashboardEmptyState
+            title="Loading dashboard overview"
+            description="Pulling usage records and recent request activity from the backend."
+          />
+        ) : overviewQuery.isError ? (
+          <DashboardEmptyState
+            title="Unable to load dashboard overview"
+            description={getApiErrorMessage(
+              overviewQuery.error,
+              "The overview endpoint is not available right now.",
+            )}
+          />
+        ) : (
+          <>
+            <div className="md-dashboard-panel overflow-hidden px-5 py-4">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500">
+                    Request pipeline
+                  </span>
+                  {requestPipeline.map((step, index) => (
+                    <div key={step} className="flex items-center gap-2">
+                      <div className="md-dashboard-pill border-cyan-500/16 bg-cyan-500/10 text-cyan-700">
+                        <Sparkles className="size-3.5" />
+                        {step}
+                      </div>
+                      {index < requestPipeline.length - 1 ? (
+                        <ArrowRight className="size-3.5 text-slate-600" />
+                      ) : null}
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-slate-500">{item.label}</p>
-                      <p className="text-3xl font-semibold tracking-tight text-slate-950">
-                        {item.value}
+                  ))}
+                </div>
+                <div className="md-dashboard-pill border-emerald-500/16 bg-emerald-500/10 text-emerald-700">
+                  <span className="md-status-dot-live inline-flex size-2 rounded-full bg-emerald-400" />
+                  Avg latency {formatLatency(summary?.avgLatencyMs ?? 0)}
+                </div>
+              </div>
+            </div>
+
+            <DashboardMetricGrid items={summaryCards} />
+
+            <div className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
+              <section className="md-dashboard-panel p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500">
+                      Request volume
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
+                      Activity over the last {days} days
+                    </h2>
+                  </div>
+                  <div className="md-dashboard-pill border-slate-200 bg-white text-slate-700">
+                    Cache hit rate{" "}
+                    {formatPercentage(summary?.cacheHitRate ?? 0)}
+                  </div>
+                </div>
+
+                <div className="mt-6 space-y-4">
+                  {displayedUsageTrend.length ? (
+                    displayedUsageTrend.map((point) => {
+                      const requestWidth = `${(point.requestCount / maxRequests) * 100}%`;
+                      const hitRatio =
+                        point.requestCount > 0
+                          ? (point.cacheHits / point.requestCount) * 100
+                          : 0;
+                      const errorRatio =
+                        point.requestCount > 0
+                          ? (point.errorCount / point.requestCount) * 100
+                          : 0;
+
+                      return (
+                        <article
+                          key={point.date}
+                          className="md-dashboard-panel-muted p-4"
+                        >
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-950">
+                                {formatShortDate(point.date)}
+                              </p>
+                              <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
+                                <span>
+                                  {formatCount(point.requestCount)} requests
+                                </span>
+                                <span>
+                                  {formatCount(point.cacheHits)} cache hits
+                                </span>
+                                <span>
+                                  {formatCount(point.errorCount)} errors
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-sm text-slate-600">
+                              Avg latency {formatLatency(point.avgLatencyMs)}
+                            </p>
+                          </div>
+
+                          <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-200">
+                            <div
+                              className="flex h-full overflow-hidden rounded-full"
+                              style={{ width: requestWidth }}
+                            >
+                              <div
+                                className="h-full bg-cyan-400"
+                                style={{ width: `${Math.max(hitRatio, 8)}%` }}
+                              />
+                              <div
+                                className="h-full bg-indigo-400"
+                                style={{
+                                  width: `${Math.max(100 - hitRatio - errorRatio, 0)}%`,
+                                }}
+                              />
+                              <div
+                                className="h-full bg-rose-400"
+                                style={{ width: `${Math.max(errorRatio, 0)}%` }}
+                              />
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })
+                  ) : (
+                    <DashboardEmptyState
+                      title="No usage recorded yet"
+                      description="Once authenticated metadata requests start flowing, the daily trend will appear here."
+                    />
+                  )}
+                </div>
+              </section>
+
+              <section className="md-dashboard-panel p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500">
+                      Recent request stream
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
+                      Latest authenticated metadata calls
+                    </h2>
+                  </div>
+                  <Link
+                    href={APP_ROUTES.dashboardLogs}
+                    className="md-dashboard-pill border-cyan-500/16 bg-cyan-500/10 text-cyan-700 hover:bg-cyan-500/16"
+                  >
+                    Open logs
+                    <ArrowRight className="size-3.5" />
+                  </Link>
+                </div>
+
+                <div className="mt-6 space-y-3">
+                  {recentRequests.length ? (
+                    recentRequests.map((requestItem) => (
+                      <article
+                        key={requestItem.id}
+                        className="md-dashboard-panel-muted p-4"
+                      >
+                        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-950">
+                              {requestItem.domain ?? requestItem.url}
+                            </p>
+                            <p className="mt-2 truncate font-mono text-xs text-slate-500">
+                              {requestItem.url}
+                            </p>
+                            <div className="mt-3 flex flex-wrap gap-2 text-[0.68rem] uppercase tracking-[0.14em] text-slate-500">
+                              <span className="rounded-full bg-white px-3 py-1 text-slate-700">
+                                {requestItem.apiKeyName}
+                              </span>
+                              <span className="rounded-full bg-white px-3 py-1 text-slate-700">
+                                Status {requestItem.statusCode}
+                              </span>
+                              <span className="rounded-full bg-white px-3 py-1 text-slate-700">
+                                {requestItem.cacheHit
+                                  ? "Cache hit"
+                                  : "Cache miss"}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="space-y-1 text-sm text-slate-600 xl:text-right">
+                            <p>{formatLatency(requestItem.latencyMs)}</p>
+                            <p>{formatDateTime(requestItem.requestedAt)}</p>
+                          </div>
+                        </div>
+                      </article>
+                    ))
+                  ) : (
+                    <DashboardEmptyState
+                      title="No recent requests yet"
+                      description="Authenticated metadata calls will show up here as soon as your app starts using the API."
+                    />
+                  )}
+                </div>
+              </section>
+            </div>
+
+            <MetadataPreviewPanel />
+
+            <div className="grid gap-6 xl:grid-cols-[1fr_0.86fr]">
+              <section className="md-dashboard-panel p-6">
+                <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500">
+                  Next slices
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
+                  Move deeper into the control room
+                </h2>
+                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  {quickLinks.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="md-dashboard-panel-muted p-4 hover:bg-white"
+                    >
+                      <p className="text-base font-semibold text-slate-950">
+                        {item.title}
                       </p>
-                      <p className="text-sm text-slate-600">
+                      <p className="mt-3 text-sm leading-7 text-slate-600">
                         {item.description}
                       </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                      <span className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-cyan-700">
+                        Open page
+                        <ArrowRight className="size-4" />
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </section>
 
-            <Card className="bg-slate-950 text-white">
-              <CardContent className="p-6">
-                <p className="text-sm uppercase tracking-[0.22em] text-sky-300">
-                  Roadmap fit
+              <section className="md-dashboard-panel p-6">
+                <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500">
+                  Operating snapshot
                 </p>
-                <p className="mt-3 text-lg font-medium">
-                  This shell is intentionally thin so the product stays focused
-                  on V1: auth, API keys, metadata calls, caching, rate limiting,
-                  and usage visibility.
-                </p>
-                <Link
-                  href={APP_ROUTES.dashboardApiKeys}
-                  className="mt-4 inline-flex text-sm font-medium text-sky-300 hover:text-sky-200"
-                >
-                  Open API keys page
-                </Link>
-              </CardContent>
-            </Card>
-          </div>
-        </main>
+                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
+                  Current dashboard posture
+                </h2>
+
+                <div className="mt-6 space-y-4">
+                  {[
+                    {
+                      label: "Tracked requests",
+                      value: formatCount(summary?.totalRequests ?? 0),
+                    },
+                    {
+                      label: "Requests today",
+                      value: formatCount(summary?.requestsToday ?? 0),
+                    },
+                    {
+                      label: "Average latency",
+                      value: formatLatency(summary?.avgLatencyMs ?? 0),
+                    },
+                    {
+                      label: "Account",
+                      value:
+                        overviewQuery.data?.account.email ?? "Session active",
+                    },
+                  ].map((item) => (
+                    <div
+                      key={item.label}
+                      className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4"
+                    >
+                      <span className="text-sm text-slate-600">
+                        {item.label}
+                      </span>
+                      <span className="text-sm font-semibold text-slate-950">
+                        {item.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </>
+        )}
       </div>
-    </div>
+    </DashboardFrame>
   );
 }
