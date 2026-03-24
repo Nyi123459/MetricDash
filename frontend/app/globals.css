@@ -68,7 +68,7 @@
     background-image:
       linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
       linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
-    background-size: 88px 88px;
+    background-size: 88px 88px; /*spacing between lines*/
     mask-image: radial-gradient(circle at top, black, transparent 74%);
   }
 

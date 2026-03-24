@@ -1,5 +1,5 @@
 -- AlterTable
-ALTER TABLE `user` MODIFY `password_hash` VARCHAR(191) NULL;
+ALTER TABLE `User` MODIFY `password_hash` VARCHAR(191) NULL;
 
 -- CreateTable
 CREATE TABLE `EmailVerificationToken` (

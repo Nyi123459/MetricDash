@@ -2,21 +2,41 @@ import "dotenv/config";
 import { createClient } from "redis";
 
 type AppRedisClient = ReturnType<typeof createClient>;
+type RedisProcessState = {
+  client: AppRedisClient | null;
+  connectPromise: Promise<AppRedisClient> | null;
+};
 
-let redisClient: AppRedisClient | null = null;
-let redisConnectPromise: Promise<AppRedisClient> | null = null;
+type MetricDashProcess = NodeJS.Process & {
+  __metricdashRedisState?: RedisProcessState;
+};
+
+function getRedisState() {
+  const metricDashProcess = process as MetricDashProcess;
+
+  if (!metricDashProcess.__metricdashRedisState) {
+    metricDashProcess.__metricdashRedisState = {
+      client: null,
+      connectPromise: null,
+    };
+  }
+
+  return metricDashProcess.__metricdashRedisState;
+}
 
 function getRedisUrl() {
   return process.env.REDIS_URL ?? "redis://localhost:6379";
 }
 
 export async function getRedisClient() {
-  if (redisClient?.isOpen) {
-    return redisClient;
+  const state = getRedisState();
+
+  if (state.client?.isOpen) {
+    return state.client;
   }
 
-  if (redisConnectPromise) {
-    return redisConnectPromise;
+  if (state.connectPromise) {
+    return state.connectPromise;
   }
 
   const client = createClient({
@@ -31,15 +51,40 @@ export async function getRedisClient() {
     console.error("Redis client error:", error);
   });
 
-  redisConnectPromise = client
+  state.connectPromise = client
     .connect()
     .then(() => {
-      redisClient = client;
+      state.client = client;
       return client;
     })
     .finally(() => {
-      redisConnectPromise = null;
+      state.connectPromise = null;
     });
 
-  return redisConnectPromise;
+  return state.connectPromise;
+}
+
+export async function disconnectRedisClient() {
+  const state = getRedisState();
+  const client = state.client;
+
+  state.client = null;
+  state.connectPromise = null;
+
+  if (!client) {
+    return;
+  }
+
+  try {
+    if (client.isOpen) {
+      await client.quit();
+      return;
+    }
+  } catch {
+    // Fall through to destroy the socket if QUIT cannot complete cleanly.
+  }
+
+  if (typeof client.destroy === "function") {
+    client.destroy();
+  }
 }

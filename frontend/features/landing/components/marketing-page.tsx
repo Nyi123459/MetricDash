@@ -15,17 +15,17 @@ export function MarketingPage() {
   return (
     <main
       className={cn(
-        "relative isolate min-h-screen overflow-hidden bg-[#050816] text-white",
+        "md-site-shell relative isolate min-h-screen text-slate-950",
         styles.page,
       )}
     >
       <div
         className={cn(
-          "pointer-events-none absolute inset-0 opacity-60",
-          styles.gridGlow,
+          "md-site-grid pointer-events-none absolute inset-0 opacity-70",
+          styles.pageGlow,
         )}
       />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[linear-gradient(180deg,rgba(34,211,238,0.12),transparent)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.18),transparent_64%)]" />
 
       <div className="relative">
         <MarketingNavbar />

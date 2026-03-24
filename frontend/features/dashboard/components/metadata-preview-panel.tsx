@@ -126,10 +126,6 @@ export function MetadataPreviewPanel() {
               like customer traffic.
             </p>
           </div>
-          <div className="md-dashboard-pill border-cyan-500/18 bg-cyan-500/10 text-cyan-700">
-            <Sparkles className="size-4" />
-            Request preview
-          </div>
         </div>
 
         <div className="mt-6">

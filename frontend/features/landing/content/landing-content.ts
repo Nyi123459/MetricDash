@@ -190,36 +190,38 @@ export const pricingCards: PricingCard[] = [
     price: "$0",
     description:
       "A simple starting point while MetricDash sharpens the V1 workflow.",
-    notes: "Great for testing preview flows and internal prototypes.",
+    notes:
+      "Includes up to 10k monthly billable requests while teams validate preview quality and integration fit.",
     ctaLabel: "Create account",
     ctaHref: "/register",
     features: [
       "Access to the auth flow and dashboard shell",
       "API key creation for local and staging usage",
       "Early metadata response testing",
+      "10k included billable requests each month",
       "Roadmap updates as V1 expands",
     ],
   },
   {
     name: "Build",
-    price: "Planned",
+    price: "$0.60 / 1k",
     description:
-      "For teams preparing to move link previews into production once usage pricing lands.",
+      "Usage-based pricing once monthly included billable requests are exceeded.",
     notes:
-      "Positioned around request volume, logs, and billing estimates after V1 feedback.",
+      "Dashboard billing estimates are live in V1. Stripe collection and metering come later.",
     ctaLabel: "Open dashboard",
     ctaHref: "/dashboard",
     featured: true,
     features: [
-      "Higher request ceilings",
+      "Cache hits stay free under the launch model",
       "Usage trends and request log visibility",
-      "Billing estimate surfaces",
-      "Priority onboarding for launch teams",
+      "Billing estimate surfaces in the dashboard",
+      "Server-owned pricing model ready for Stripe later",
     ],
   },
   {
     name: "Scale",
-    price: "Custom",
+    price: "Custom later",
     description:
       "A future path for products that need predictable quotas, integrations, and rollout support.",
     notes:
@@ -254,7 +256,7 @@ export const faqs: FaqItem[] = [
   {
     question: "Is billing live today?",
     answer:
-      "Not as a finished system. MetricDash is still in the V1 stage, so pricing on this page is framed as an early launch direction rather than a fully shipped billing promise.",
+      "Billing estimates and the launch pricing model are live in the dashboard today. Stripe customer management, metered billing, and invoicing are intentionally deferred to a later phase.",
   },
 ];
 

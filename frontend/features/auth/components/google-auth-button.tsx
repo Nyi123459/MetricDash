@@ -12,12 +12,14 @@ import {
 
 type GoogleAuthButtonProps = {
   context: "signin" | "signup";
+  redirectTo?: string;
   onError: (message: string | null) => void;
   onLinkRequired: (credential: string, message: string) => void;
 };
 
 export function GoogleAuthButton({
   context,
+  redirectTo = APP_ROUTES.dashboard,
   onError,
   onLinkRequired,
 }: GoogleAuthButtonProps) {
@@ -65,7 +67,7 @@ export function GoogleAuthButton({
 
         try {
           await googleSignIn({ idToken: credential });
-          router.push(APP_ROUTES.dashboard);
+          router.push(redirectTo);
           router.refresh();
         } catch (error) {
           if (getApiErrorCode(error) === "GOOGLE_LINK_REQUIRED") {
@@ -104,7 +106,7 @@ export function GoogleAuthButton({
     return () => {
       window.google?.accounts.id.cancel();
     };
-  }, [clientId, containerId, context, isScriptReady, router]);
+  }, [clientId, containerId, context, isScriptReady, redirectTo, router]);
 
   if (!clientId) {
     return (

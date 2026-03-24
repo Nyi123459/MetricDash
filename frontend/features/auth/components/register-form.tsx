@@ -9,12 +9,12 @@ import { Button } from "@/common/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
+import { AuthShell } from "@/features/auth/components/auth-shell";
 import { GoogleAuthButton } from "@/features/auth/components/google-auth-button";
 import { useRegister } from "@/features/auth/hooks/use-register";
 import {
@@ -68,12 +68,15 @@ export function RegisterForm() {
 
     if (!parsed.success) {
       const nextErrors: FieldErrors = {};
+
       for (const issue of parsed.error.issues) {
         const field = issue.path[0] as keyof RegisterFormValues | undefined;
+
         if (field && !nextErrors[field]) {
           nextErrors[field] = issue.message;
         }
       }
+
       setFieldErrors(nextErrors);
       return;
     }
@@ -98,9 +101,7 @@ export function RegisterForm() {
     }
   }
 
-  async function handleGoogleLink(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  async function handleGoogleLink() {
     if (!googleCredential) {
       setServerMessage("Google sign-in session expired. Please try again.");
       return;
@@ -127,276 +128,285 @@ export function RegisterForm() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top,_#dbeafe_0%,_#eff6ff_35%,_#f8fafc_100%)] px-4 py-12">
-      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(14,165,233,0.08),transparent_35%,rgba(15,23,42,0.08))]" />
-      <div className="relative w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-3xl bg-gradient-to-br from-sky-600 to-blue-800 shadow-xl shadow-sky-500/30">
-            <User className="size-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
-            Create account
-          </h1>
-          <p className="mt-2 text-sm text-slate-600">
-            Join MetricDash and ship better link intelligence faster.
+    <AuthShell
+      badge="Create workspace"
+      title="Create account"
+      description="Join MetricDash and ship better link intelligence faster."
+      icon={User}
+      sideTitle="Launch a cleaner preview workflow without building the plumbing alone."
+      sideDescription="MetricDash gives your team a shared operational surface for metadata extraction, API key lifecycle, request logs, and usage visibility from the start."
+      highlights={[
+        {
+          title: "Faster onboarding",
+          description:
+            "Spin up credentials, explore the dashboard shell, and test the metadata path from the same product.",
+        },
+        {
+          title: "Safer defaults",
+          description:
+            "Expiry, request budgets, and key handling stay backend-owned instead of leaking security policy into the UI.",
+        },
+        {
+          title: "Operational visibility",
+          description:
+            "Request trends, billing estimates, and log inspection are already part of the day-one product loop.",
+        },
+      ]}
+    >
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle>Register</CardTitle>
+          <p className="text-sm leading-7 text-slate-600">
+            Set up your account, then verify your email before you begin working
+            inside the dashboard.
           </p>
-        </div>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle>Register</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full name</Label>
-                <div className="relative">
-                  <User className="pointer-events-none absolute left-4 top-3.5 size-5 text-slate-400" />
-                  <Input
-                    id="name"
-                    className="pl-11"
-                    placeholder="John Doe"
-                    value={formData.name}
-                    onChange={(event) =>
-                      setFormData((current) => ({
-                        ...current,
-                        name: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                {fieldErrors.name ? (
-                  <p className="text-xs text-rose-600">{fieldErrors.name}</p>
-                ) : null}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email address</Label>
-                <div className="relative">
-                  <Mail className="pointer-events-none absolute left-4 top-3.5 size-5 text-slate-400" />
-                  <Input
-                    id="email"
-                    type="email"
-                    className="pl-11"
-                    placeholder="you@example.com"
-                    value={formData.email}
-                    onChange={(event) =>
-                      setFormData((current) => ({
-                        ...current,
-                        email: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                {fieldErrors.email ? (
-                  <p className="text-xs text-rose-600">{fieldErrors.email}</p>
-                ) : null}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="pointer-events-none absolute left-4 top-3.5 size-5 text-slate-400" />
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    className="pl-11 pr-11"
-                    placeholder="Create a strong password"
-                    value={formData.password}
-                    onChange={(event) =>
-                      setFormData((current) => ({
-                        ...current,
-                        password: event.target.value,
-                      }))
-                    }
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((value) => !value)}
-                    className="absolute right-4 top-3 text-slate-400 transition hover:text-slate-700"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="size-5" />
-                    ) : (
-                      <Eye className="size-5" />
-                    )}
-                  </button>
-                </div>
-                {formData.password ? (
-                  <div className="space-y-1">
-                    <div className="flex gap-1">
-                      {[1, 2, 3].map((level) => (
-                        <span
-                          key={level}
-                          className={`h-1 flex-1 rounded-full ${
-                            level <= strength ? strengthColor : "bg-slate-200"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <p className="text-xs text-slate-500">
-                      Password strength:{" "}
-                      <span className="font-medium text-slate-700">
-                        {strengthLabel}
-                      </span>
-                    </p>
-                  </div>
-                ) : null}
-                {fieldErrors.password ? (
-                  <p className="text-xs text-rose-600">
-                    {fieldErrors.password}
-                  </p>
-                ) : null}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm password</Label>
-                <div className="relative">
-                  <Lock className="pointer-events-none absolute left-4 top-3.5 size-5 text-slate-400" />
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    className="pl-11 pr-11"
-                    placeholder="Repeat your password"
-                    value={formData.confirmPassword}
-                    onChange={(event) =>
-                      setFormData((current) => ({
-                        ...current,
-                        confirmPassword: event.target.value,
-                      }))
-                    }
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword((value) => !value)}
-                    className="absolute right-4 top-3 text-slate-400 transition hover:text-slate-700"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="size-5" />
-                    ) : (
-                      <Eye className="size-5" />
-                    )}
-                  </button>
-                </div>
-                {fieldErrors.confirmPassword ? (
-                  <p className="text-xs text-rose-600">
-                    {fieldErrors.confirmPassword}
-                  </p>
-                ) : null}
-              </div>
-
-              <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={formData.agreeToTerms}
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="name">Full name</Label>
+              <div className="relative">
+                <User className="pointer-events-none absolute left-4 top-3.5 size-5 text-slate-400" />
+                <Input
+                  id="name"
+                  className="pl-11"
+                  placeholder="John Doe"
+                  value={formData.name}
                   onChange={(event) =>
                     setFormData((current) => ({
                       ...current,
-                      agreeToTerms: event.target.checked,
+                      name: event.target.value,
                     }))
                   }
-                  className="mt-0.5 size-4 rounded border-slate-300 text-sky-600"
                 />
-                <span>
-                  I agree to the{" "}
-                  <span className="font-medium text-slate-900">Terms</span> and{" "}
-                  <span className="font-medium text-slate-900">
-                    Privacy Policy
-                  </span>
-                  .
-                </span>
-              </label>
-              {fieldErrors.agreeToTerms ? (
-                <p className="text-xs text-rose-600">
-                  {fieldErrors.agreeToTerms}
-                </p>
+              </div>
+              {fieldErrors.name ? (
+                <p className="text-xs text-rose-600">{fieldErrors.name}</p>
               ) : null}
+            </div>
 
-              {serverMessage ? (
-                <div
-                  className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm ${
-                    registerMutation.isSuccess
-                      ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : "border border-rose-200 bg-rose-50 text-rose-700"
-                  }`}
+            <div className="space-y-2">
+              <Label htmlFor="email">Email address</Label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-4 top-3.5 size-5 text-slate-400" />
+                <Input
+                  id="email"
+                  type="email"
+                  className="pl-11"
+                  placeholder="you@example.com"
+                  value={formData.email}
+                  onChange={(event) =>
+                    setFormData((current) => ({
+                      ...current,
+                      email: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              {fieldErrors.email ? (
+                <p className="text-xs text-rose-600">{fieldErrors.email}</p>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-4 top-3.5 size-5 text-slate-400" />
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  className="pl-11 pr-11"
+                  placeholder="Create a strong password"
+                  value={formData.password}
+                  onChange={(event) =>
+                    setFormData((current) => ({
+                      ...current,
+                      password: event.target.value,
+                    }))
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((value) => !value)}
+                  className="absolute right-4 top-3 text-slate-400 transition hover:text-slate-700"
                 >
-                  {registerMutation.isSuccess ? (
-                    <Check className="size-4" />
-                  ) : null}
-                  {serverMessage}
+                  {showPassword ? (
+                    <EyeOff className="size-5" />
+                  ) : (
+                    <Eye className="size-5" />
+                  )}
+                </button>
+              </div>
+              {formData.password ? (
+                <div className="space-y-1">
+                  <div className="flex gap-1">
+                    {[1, 2, 3].map((level) => (
+                      <span
+                        key={level}
+                        className={`h-1 flex-1 rounded-full ${
+                          level <= strength ? strengthColor : "bg-slate-200"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Password strength:{" "}
+                    <span className="font-medium text-slate-700">
+                      {strengthLabel}
+                    </span>
+                  </p>
                 </div>
               ) : null}
-
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full rounded-2xl bg-gradient-to-r from-sky-600 to-blue-800"
-                disabled={registerMutation.isPending}
-              >
-                {registerMutation.isPending
-                  ? "Creating account..."
-                  : "Create account"}
-              </Button>
-
-              <div className="flex items-center gap-3 text-xs uppercase tracking-[0.22em] text-slate-400">
-                <span className="h-px flex-1 bg-slate-200" />
-                Or continue with
-                <span className="h-px flex-1 bg-slate-200" />
-              </div>
-
-              <GoogleAuthButton
-                context="signup"
-                onError={setServerMessage}
-                onLinkRequired={(credential, message) => {
-                  setGoogleCredential(credential);
-                  setServerMessage(message);
-                }}
-              />
-
-              {googleCredential ? (
-                <form
-                  onSubmit={handleGoogleLink}
-                  className="space-y-3 rounded-2xl border border-sky-200 bg-sky-50/80 p-4"
-                >
-                  <p className="text-sm text-sky-900">
-                    This email already has a MetricDash password account. Enter
-                    that password once to link Google sign-in for future use.
-                  </p>
-                  <div className="space-y-2">
-                    <Label htmlFor="google-register-link-password">
-                      Current password
-                    </Label>
-                    <Input
-                      id="google-register-link-password"
-                      type="password"
-                      value={linkPassword}
-                      onChange={(event) => setLinkPassword(event.target.value)}
-                      placeholder="Enter your current password"
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full rounded-2xl"
-                    disabled={isLinkingGoogle}
-                  >
-                    {isLinkingGoogle ? "Linking Google..." : "Link Google"}
-                  </Button>
-                </form>
+              {fieldErrors.password ? (
+                <p className="text-xs text-rose-600">{fieldErrors.password}</p>
               ) : null}
+            </div>
 
-              <p className="text-center text-sm text-slate-600">
-                Already have an account?{" "}
-                <Link
-                  className="font-medium text-sky-700 hover:text-sky-800"
-                  href={APP_ROUTES.login}
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm password</Label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-4 top-3.5 size-5 text-slate-400" />
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  className="pl-11 pr-11"
+                  placeholder="Repeat your password"
+                  value={formData.confirmPassword}
+                  onChange={(event) =>
+                    setFormData((current) => ({
+                      ...current,
+                      confirmPassword: event.target.value,
+                    }))
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((value) => !value)}
+                  className="absolute right-4 top-3 text-slate-400 transition hover:text-slate-700"
                 >
-                  Sign in
-                </Link>
+                  {showConfirmPassword ? (
+                    <EyeOff className="size-5" />
+                  ) : (
+                    <Eye className="size-5" />
+                  )}
+                </button>
+              </div>
+              {fieldErrors.confirmPassword ? (
+                <p className="text-xs text-rose-600">
+                  {fieldErrors.confirmPassword}
+                </p>
+              ) : null}
+            </div>
+
+            <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-600">
+              <input
+                type="checkbox"
+                checked={formData.agreeToTerms}
+                onChange={(event) =>
+                  setFormData((current) => ({
+                    ...current,
+                    agreeToTerms: event.target.checked,
+                  }))
+                }
+                className="mt-0.5 size-4 rounded border-slate-300 text-sky-600"
+              />
+              <span>
+                I agree to the{" "}
+                <span className="font-medium text-slate-900">Terms</span> and{" "}
+                <span className="font-medium text-slate-900">
+                  Privacy Policy
+                </span>
+                .
+              </span>
+            </label>
+            {fieldErrors.agreeToTerms ? (
+              <p className="text-xs text-rose-600">
+                {fieldErrors.agreeToTerms}
               </p>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+            ) : null}
+
+            {serverMessage ? (
+              <div
+                className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm ${
+                  registerMutation.isSuccess
+                    ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border border-rose-200 bg-rose-50 text-rose-700"
+                }`}
+              >
+                {registerMutation.isSuccess ? (
+                  <Check className="size-4" />
+                ) : null}
+                {serverMessage}
+              </div>
+            ) : null}
+
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full rounded-2xl bg-gradient-to-r from-sky-600 to-blue-800"
+              disabled={registerMutation.isPending}
+            >
+              {registerMutation.isPending
+                ? "Creating account..."
+                : "Create account"}
+            </Button>
+
+            <div className="flex items-center gap-3 text-xs uppercase tracking-[0.22em] text-slate-400">
+              <span className="h-px flex-1 bg-slate-200" />
+              Or continue with
+              <span className="h-px flex-1 bg-slate-200" />
+            </div>
+
+            <GoogleAuthButton
+              context="signup"
+              onError={setServerMessage}
+              onLinkRequired={(credential, message) => {
+                setGoogleCredential(credential);
+                setServerMessage(message);
+              }}
+            />
+
+            {googleCredential ? (
+              <div className="space-y-3 rounded-2xl border border-sky-200 bg-sky-50/80 p-4">
+                <p className="text-sm text-sky-900">
+                  This email already has a MetricDash password account. Enter
+                  that password once to link Google sign-in for future use.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="google-register-link-password">
+                    Current password
+                  </Label>
+                  <Input
+                    id="google-register-link-password"
+                    type="password"
+                    value={linkPassword}
+                    onChange={(event) => setLinkPassword(event.target.value)}
+                    placeholder="Enter your current password"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  className="w-full rounded-2xl"
+                  onClick={handleGoogleLink}
+                  disabled={isLinkingGoogle}
+                >
+                  {isLinkingGoogle ? "Linking Google..." : "Link Google"}
+                </Button>
+              </div>
+            ) : null}
+
+            <p className="text-center text-sm text-slate-600">
+              Already have an account?{" "}
+              <Link
+                className="font-medium text-sky-700 hover:text-sky-800"
+                href={APP_ROUTES.login}
+              >
+                Sign in
+              </Link>
+            </p>
+          </form>
+        </CardContent>
+      </Card>
+    </AuthShell>
   );
 }

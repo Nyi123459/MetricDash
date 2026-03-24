@@ -11,61 +11,61 @@
 
 */
 -- DropForeignKey
-ALTER TABLE `dashboard` DROP FOREIGN KEY `Dashboard_created_by_id_fkey`;
+ALTER TABLE `Dashboard` DROP FOREIGN KEY `Dashboard_created_by_id_fkey`;
 
 -- DropForeignKey
-ALTER TABLE `dashboard` DROP FOREIGN KEY `Dashboard_workspace_id_fkey`;
+ALTER TABLE `Dashboard` DROP FOREIGN KEY `Dashboard_workspace_id_fkey`;
 
 -- DropForeignKey
-ALTER TABLE `dashboardmetric` DROP FOREIGN KEY `DashboardMetric_dashboard_id_fkey`;
+ALTER TABLE `DashboardMetric` DROP FOREIGN KEY `DashboardMetric_dashboard_id_fkey`;
 
 -- DropForeignKey
-ALTER TABLE `dashboardmetric` DROP FOREIGN KEY `DashboardMetric_metric_id_fkey`;
+ALTER TABLE `DashboardMetric` DROP FOREIGN KEY `DashboardMetric_metric_id_fkey`;
 
 -- DropForeignKey
-ALTER TABLE `datasource` DROP FOREIGN KEY `DataSource_workspace_id_fkey`;
+ALTER TABLE `DataSource` DROP FOREIGN KEY `DataSource_workspace_id_fkey`;
 
 -- DropForeignKey
-ALTER TABLE `metric` DROP FOREIGN KEY `Metric_created_by_id_fkey`;
+ALTER TABLE `Metric` DROP FOREIGN KEY `Metric_created_by_id_fkey`;
 
 -- DropForeignKey
-ALTER TABLE `metric` DROP FOREIGN KEY `Metric_data_source_id_fkey`;
+ALTER TABLE `Metric` DROP FOREIGN KEY `Metric_data_source_id_fkey`;
 
 -- DropForeignKey
-ALTER TABLE `metric` DROP FOREIGN KEY `Metric_workspace_id_fkey`;
+ALTER TABLE `Metric` DROP FOREIGN KEY `Metric_workspace_id_fkey`;
 
 -- DropForeignKey
-ALTER TABLE `metricsnapshot` DROP FOREIGN KEY `MetricSnapshot_metric_id_fkey`;
+ALTER TABLE `MetricSnapshot` DROP FOREIGN KEY `MetricSnapshot_metric_id_fkey`;
 
 -- DropForeignKey
-ALTER TABLE `workspace` DROP FOREIGN KEY `Workspace_owner_user_id_fkey`;
+ALTER TABLE `Workspace` DROP FOREIGN KEY `Workspace_owner_user_id_fkey`;
 
 -- DropForeignKey
-ALTER TABLE `workspacemember` DROP FOREIGN KEY `WorkspaceMember_user_id_fkey`;
+ALTER TABLE `WorkspaceMember` DROP FOREIGN KEY `WorkspaceMember_user_id_fkey`;
 
 -- DropForeignKey
-ALTER TABLE `workspacemember` DROP FOREIGN KEY `WorkspaceMember_workspace_id_fkey`;
+ALTER TABLE `WorkspaceMember` DROP FOREIGN KEY `WorkspaceMember_workspace_id_fkey`;
 
 -- DropTable
-DROP TABLE `dashboard`;
+DROP TABLE `Dashboard`;
 
 -- DropTable
-DROP TABLE `dashboardmetric`;
+DROP TABLE `DashboardMetric`;
 
 -- DropTable
-DROP TABLE `datasource`;
+DROP TABLE `DataSource`;
 
 -- DropTable
-DROP TABLE `metric`;
+DROP TABLE `Metric`;
 
 -- DropTable
-DROP TABLE `metricsnapshot`;
+DROP TABLE `MetricSnapshot`;
 
 -- DropTable
-DROP TABLE `workspace`;
+DROP TABLE `Workspace`;
 
 -- DropTable
-DROP TABLE `workspacemember`;
+DROP TABLE `WorkspaceMember`;
 
 -- CreateTable
 CREATE TABLE `ApiKey` (

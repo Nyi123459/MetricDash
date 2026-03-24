@@ -177,16 +177,18 @@ describe("Dashboard routes", () => {
   });
 
   afterAll(async () => {
-    await new Promise<void>((resolve, reject) => {
-      sourceServer.close((error) => {
-        if (error) {
-          reject(error);
-          return;
-        }
+    if (sourceServer) {
+      await new Promise<void>((resolve, reject) => {
+        sourceServer.close((error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
 
-        resolve();
+          resolve();
+        });
       });
-    });
+    }
 
     await prisma.requestLog.deleteMany({
       where: {

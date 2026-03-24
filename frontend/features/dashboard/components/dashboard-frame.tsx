@@ -95,25 +95,6 @@ export function DashboardFrame({
             </div>
           </div>
 
-          <div className="md-dashboard-panel-muted mt-8 p-4">
-            <p className="text-[0.68rem] uppercase tracking-[0.22em] text-slate-500">
-              Workspace
-            </p>
-            <p className="mt-2 text-sm font-semibold text-slate-950">
-              Production Control Room
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="md-dashboard-pill border-emerald-500/20 bg-emerald-500/10 text-emerald-700">
-                <Circle className="size-2 fill-current" />
-                Production
-              </span>
-              <span className="md-dashboard-pill border-cyan-500/20 bg-cyan-500/10 text-cyan-700">
-                <Sparkles className="size-3.5" />
-                Live telemetry
-              </span>
-            </div>
-          </div>
-
           <nav className="mt-8 flex flex-1 flex-col">
             <p className="px-3 text-[0.68rem] uppercase tracking-[0.22em] text-slate-500">
               Navigation
@@ -229,10 +210,6 @@ export function DashboardFrame({
                         <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
                           {title}
                         </h1>
-                        <span className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-cyan-700">
-                          <Sparkles className="size-3.5" />
-                          {badge}
-                        </span>
                       </div>
                       <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
                         {description}

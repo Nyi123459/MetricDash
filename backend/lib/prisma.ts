@@ -2,7 +2,19 @@ import "dotenv/config";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { PrismaClient } from "@prisma/client";
 
-let prisma: PrismaClient | null = null;
+type MetricDashProcess = NodeJS.Process & {
+  __metricdashPrismaClient?: PrismaClient | null;
+};
+
+function getPrismaState() {
+  const metricDashProcess = process as MetricDashProcess;
+
+  if (!("__metricdashPrismaClient" in metricDashProcess)) {
+    metricDashProcess.__metricdashPrismaClient = null;
+  }
+
+  return metricDashProcess;
+}
 
 function hasDiscreteDbConfig() {
   return Boolean(
@@ -38,9 +50,23 @@ function createPrismaClient() {
 }
 
 export function getPrismaClient() {
-  if (!prisma) {
-    prisma = createPrismaClient();
+  const prismaState = getPrismaState();
+
+  if (!prismaState.__metricdashPrismaClient) {
+    prismaState.__metricdashPrismaClient = createPrismaClient();
   }
 
-  return prisma;
+  return prismaState.__metricdashPrismaClient;
+}
+
+export async function disconnectPrismaClient() {
+  const prismaState = getPrismaState();
+  const prisma = prismaState.__metricdashPrismaClient;
+
+  if (!prisma) {
+    return;
+  }
+
+  await prisma.$disconnect();
+  prismaState.__metricdashPrismaClient = null;
 }

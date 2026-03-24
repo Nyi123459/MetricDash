@@ -150,31 +150,6 @@ export function DashboardShell() {
           />
         ) : (
           <>
-            <div className="md-dashboard-panel overflow-hidden px-5 py-4">
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500">
-                    Request pipeline
-                  </span>
-                  {requestPipeline.map((step, index) => (
-                    <div key={step} className="flex items-center gap-2">
-                      <div className="md-dashboard-pill border-cyan-500/16 bg-cyan-500/10 text-cyan-700">
-                        <Sparkles className="size-3.5" />
-                        {step}
-                      </div>
-                      {index < requestPipeline.length - 1 ? (
-                        <ArrowRight className="size-3.5 text-slate-600" />
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-                <div className="md-dashboard-pill border-emerald-500/16 bg-emerald-500/10 text-emerald-700">
-                  <span className="md-status-dot-live inline-flex size-2 rounded-full bg-emerald-400" />
-                  Avg latency {formatLatency(summary?.avgLatencyMs ?? 0)}
-                </div>
-              </div>
-            </div>
-
             <DashboardMetricGrid items={summaryCards} />
 
             <div className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
@@ -333,80 +308,6 @@ export function DashboardShell() {
             </div>
 
             <MetadataPreviewPanel />
-
-            <div className="grid gap-6 xl:grid-cols-[1fr_0.86fr]">
-              <section className="md-dashboard-panel p-6">
-                <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500">
-                  Next slices
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
-                  Move deeper into the control room
-                </h2>
-                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  {quickLinks.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="md-dashboard-panel-muted p-4 hover:bg-white"
-                    >
-                      <p className="text-base font-semibold text-slate-950">
-                        {item.title}
-                      </p>
-                      <p className="mt-3 text-sm leading-7 text-slate-600">
-                        {item.description}
-                      </p>
-                      <span className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-cyan-700">
-                        Open page
-                        <ArrowRight className="size-4" />
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              </section>
-
-              <section className="md-dashboard-panel p-6">
-                <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500">
-                  Operating snapshot
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
-                  Current dashboard posture
-                </h2>
-
-                <div className="mt-6 space-y-4">
-                  {[
-                    {
-                      label: "Tracked requests",
-                      value: formatCount(summary?.totalRequests ?? 0),
-                    },
-                    {
-                      label: "Requests today",
-                      value: formatCount(summary?.requestsToday ?? 0),
-                    },
-                    {
-                      label: "Average latency",
-                      value: formatLatency(summary?.avgLatencyMs ?? 0),
-                    },
-                    {
-                      label: "Account",
-                      value:
-                        overviewQuery.data?.account.email ?? "Session active",
-                    },
-                  ].map((item) => (
-                    <div
-                      key={item.label}
-                      className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4"
-                    >
-                      <span className="text-sm text-slate-600">
-                        {item.label}
-                      </span>
-                      <span className="text-sm font-semibold text-slate-950">
-                        {item.value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </div>
           </>
         )}
       </div>

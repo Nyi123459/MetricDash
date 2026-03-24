@@ -1,64 +1,38 @@
-#dashboard::before,
-#dashboard::after {
+.pageGlow {
+  background-size: 84px 84px;
+}
+
+.heroOrbit::before,
+.heroOrbit::after {
   content: "";
   position: absolute;
   border-radius: 9999px;
   filter: blur(90px);
-  opacity: 0.7;
+  opacity: 0.72;
   pointer-events: none;
 }
 
-#dashboard::before {
-  width: 28rem;
-  height: 28rem;
-  top: 4rem;
-  left: -8rem;
-  background: rgba(56, 189, 248, 0.22);
-  animation: drift 14s ease-in-out infinite alternate;
-}
-
-#dashboard::after {
-  width: 24rem;
-  height: 24rem;
-  top: 16rem;
+.heroOrbit::before {
+  width: 22rem;
+  height: 22rem;
+  top: -3rem;
   right: -6rem;
-  background: rgba(34, 211, 238, 0.14);
-  animation: drift 18s ease-in-out infinite alternate-reverse;
+  background: rgba(34, 211, 238, 0.2);
+  animation: drift 12s ease-in-out infinite alternate;
 }
 
-.gridGlow {
-  background-image:
-    linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
-  background-size: 72px 72px;
-  mask-image: radial-gradient(circle at top, black, transparent 72%);
+.heroOrbit::after {
+  width: 18rem;
+  height: 18rem;
+  bottom: 1rem;
+  left: -4rem;
+  background: rgba(56, 189, 248, 0.14);
+  animation: drift 14s ease-in-out infinite alternate-reverse;
 }
 
-.floatCard {
+.floatCard,
+.floatingCard {
   animation: floatCard 7s ease-in-out infinite;
-}
-
-.shimmer {
-  position: relative;
-  overflow: hidden;
-}
-
-.shimmer::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.12),
-    transparent
-  );
-  animation: shimmer 4.5s ease-in-out infinite;
-}
-
-.orb {
-  animation: pulseOrb 8s ease-in-out infinite;
 }
 
 .responseCodeWrap {
@@ -72,14 +46,14 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 50%;
+  height: 45%;
   pointer-events: none;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(3px);
   background: linear-gradient(
     180deg,
-    rgba(9, 19, 37, 0),
-    rgba(9, 19, 37, 0.68) 45%,
-    rgba(9, 19, 37, 0.95)
+    rgba(16, 27, 54, 0),
+    rgba(16, 27, 54, 0.55) 44%,
+    rgba(16, 27, 54, 0.9)
   );
 }
 
@@ -89,7 +63,7 @@
   }
 
   100% {
-    transform: translate3d(2rem, 1.5rem, 0) scale(1.08);
+    transform: translate3d(1.5rem, 1rem, 0) scale(1.05);
   }
 }
 
@@ -100,31 +74,15 @@
   }
 
   50% {
-    transform: translateY(-10px);
+    transform: translateY(-12px);
   }
 }
 
-@keyframes shimmer {
-  0%,
-  12% {
-    transform: translateX(-100%);
-  }
-
-  24%,
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-@keyframes pulseOrb {
-  0%,
-  100% {
-    opacity: 0.45;
-    transform: scale(0.95);
-  }
-
-  50% {
-    opacity: 0.8;
-    transform: scale(1.05);
+@media (prefers-reduced-motion: reduce) {
+  .heroOrbit::before,
+  .heroOrbit::after,
+  .floatCard,
+  .floatingCard {
+    animation: none;
   }
 }
