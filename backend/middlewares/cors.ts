@@ -4,6 +4,11 @@ const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
 ];
+const DEFAULT_ALLOWED_HEADERS = [
+  "Content-Type",
+  "Authorization",
+  "X-Request-Id",
+];
 
 function getAllowedOrigins() {
   const configuredOrigins = process.env.CORS_ALLOWED_ORIGINS?.split(",")
@@ -33,7 +38,20 @@ export function corsMiddleware(
     "Access-Control-Allow-Methods",
     "GET,POST,PUT,PATCH,DELETE,OPTIONS",
   );
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  const requestedHeaders = String(
+    req.headers["access-control-request-headers"] ?? "",
+  )
+    .split(",")
+    .map((header) => header.trim())
+    .filter(Boolean);
+  const allowedHeaders = [...DEFAULT_ALLOWED_HEADERS, ...requestedHeaders];
+  const uniqueAllowedHeaders = Array.from(
+    new Map(
+      allowedHeaders.map((header) => [header.toLowerCase(), header]),
+    ).values(),
+  );
+
+  res.header("Access-Control-Allow-Headers", uniqueAllowedHeaders.join(", "));
 
   if (req.method === "OPTIONS") {
     res.sendStatus(204);

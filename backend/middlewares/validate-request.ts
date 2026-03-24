@@ -47,6 +47,11 @@ export function validateRequest(schemas: RequestSchemas) {
             400,
             "VALIDATION_ERROR",
             error.issues.map((issue) => issue.message).join(", "),
+            error.issues.map((issue) => ({
+              code: issue.code,
+              message: issue.message,
+              path: issue.path.join("."),
+            })),
           ),
         );
         return;

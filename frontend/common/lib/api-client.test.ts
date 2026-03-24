@@ -2,6 +2,10 @@ import MockAdapter from "axios-mock-adapter";
 import { apiClient, refreshClient } from "./api-client";
 
 describe("apiClient response interceptor", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("refreshes once and retries the original request after a 401", async () => {
     const mock = new MockAdapter(apiClient);
     const refreshMock = new MockAdapter(refreshClient);
@@ -46,5 +50,33 @@ describe("apiClient response interceptor", () => {
 
     mock.restore();
     refreshMock.restore();
+  });
+
+  it("retries a safe request once after a transient server failure", async () => {
+    const mock = new MockAdapter(apiClient);
+    let requestAttempts = 0;
+
+    mock.onGet("/health").reply((config) => {
+      requestAttempts += 1;
+
+      expect(config.headers?.["X-Request-Id"]).toBeTruthy();
+
+      if (requestAttempts === 1) {
+        return [
+          503,
+          { error: { code: "SERVICE_UNAVAILABLE", message: "Try again" } },
+        ];
+      }
+
+      return [200, { ok: true }];
+    });
+
+    const response = await apiClient.get("/health");
+
+    expect(response.status).toBe(200);
+    expect(response.data).toEqual({ ok: true });
+    expect(requestAttempts).toBe(2);
+
+    mock.restore();
   });
 });

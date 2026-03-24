@@ -1,5 +1,6 @@
 export interface GetMetadataInput {
   url: string;
+  requestId?: string;
 }
 
 export interface MetadataResponse {

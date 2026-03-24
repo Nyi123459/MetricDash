@@ -47,14 +47,54 @@ describe("RedisUsageCounter", () => {
     });
 
     expect(redis.multi).toHaveBeenCalled();
-    expect(multi.hSetNX).toHaveBeenNthCalledWith(1, expect.any(String), "user_id", "3");
-    expect(multi.hSetNX).toHaveBeenNthCalledWith(2, expect.any(String), "api_key_id", "9");
-    expect(multi.hSetNX).toHaveBeenNthCalledWith(3, expect.any(String), "usage_date", "2026-03-21");
-    expect(multi.hIncrBy).toHaveBeenNthCalledWith(1, expect.any(String), "request_count", 1);
-    expect(multi.hIncrBy).toHaveBeenNthCalledWith(2, expect.any(String), "cache_hits", 1);
-    expect(multi.hIncrBy).toHaveBeenNthCalledWith(3, expect.any(String), "cache_misses", 0);
-    expect(multi.hIncrBy).toHaveBeenNthCalledWith(4, expect.any(String), "error_count", 1);
-    expect(multi.hIncrBy).toHaveBeenNthCalledWith(5, expect.any(String), "total_latency_ms", 120);
+    expect(multi.hSetNX).toHaveBeenNthCalledWith(
+      1,
+      expect.any(String),
+      "user_id",
+      "3",
+    );
+    expect(multi.hSetNX).toHaveBeenNthCalledWith(
+      2,
+      expect.any(String),
+      "api_key_id",
+      "9",
+    );
+    expect(multi.hSetNX).toHaveBeenNthCalledWith(
+      3,
+      expect.any(String),
+      "usage_date",
+      "2026-03-21",
+    );
+    expect(multi.hIncrBy).toHaveBeenNthCalledWith(
+      1,
+      expect.any(String),
+      "request_count",
+      1,
+    );
+    expect(multi.hIncrBy).toHaveBeenNthCalledWith(
+      2,
+      expect.any(String),
+      "cache_hits",
+      1,
+    );
+    expect(multi.hIncrBy).toHaveBeenNthCalledWith(
+      3,
+      expect.any(String),
+      "cache_misses",
+      0,
+    );
+    expect(multi.hIncrBy).toHaveBeenNthCalledWith(
+      4,
+      expect.any(String),
+      "error_count",
+      1,
+    );
+    expect(multi.hIncrBy).toHaveBeenNthCalledWith(
+      5,
+      expect.any(String),
+      "total_latency_ms",
+      120,
+    );
     expect(multi.expireAt).toHaveBeenCalledWith(
       expect.any(String),
       new Date("2026-03-30T00:00:00.000Z"),

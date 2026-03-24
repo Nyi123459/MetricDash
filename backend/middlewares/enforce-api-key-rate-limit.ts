@@ -15,10 +15,7 @@ export function enforceApiKeyRateLimit(rateLimitService: RateLimitService) {
 
       res.setHeader("X-RateLimit-Limit", result.limit.toString());
       res.setHeader("X-RateLimit-Remaining", result.remaining.toString());
-      res.setHeader(
-        "X-RateLimit-Reset",
-        result.resetAfterSeconds.toString(),
-      );
+      res.setHeader("X-RateLimit-Reset", result.resetAfterSeconds.toString());
 
       if (!result.allowed) {
         res.setHeader("Retry-After", result.retryAfterSeconds.toString());

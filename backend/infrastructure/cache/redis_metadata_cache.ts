@@ -1,5 +1,8 @@
 import { createHash } from "crypto";
-import { MetadataCache, MetadataCacheEntry } from "../../contracts/metadata_cache";
+import {
+  MetadataCache,
+  MetadataCacheEntry,
+} from "../../contracts/metadata_cache";
 import { getRedisClient } from "../../lib/redis";
 import { MetadataResponse } from "../../models/metadata";
 
@@ -10,7 +13,10 @@ export class RedisMetadataCache implements MetadataCache {
     try {
       const redis = await getRedisClient();
       const key = this.getCacheKey(url);
-      const [payload, ttl] = await Promise.all([redis.get(key), redis.ttl(key)]);
+      const [payload, ttl] = await Promise.all([
+        redis.get(key),
+        redis.ttl(key),
+      ]);
 
       if (!payload) {
         return null;

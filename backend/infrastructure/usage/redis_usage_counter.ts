@@ -35,11 +35,11 @@ export class RedisUsageCounter implements UsageCounter {
       counterUpdates.hIncrBy(key, "error_count", incrementErrorCount);
       counterUpdates.hIncrBy(key, "total_latency_ms", input.latencyMs);
       counterUpdates.expireAt(key, expiresAt);
-      const transactionReplies = (await counterUpdates.exec()) as unknown as number[];
+      const transactionReplies =
+        (await counterUpdates.exec()) as unknown as number[];
 
       if (
-        transactionReplies.length !==
-        RedisUsageCounter.TRANSACTION_REPLY_LENGTH
+        transactionReplies.length !== RedisUsageCounter.TRANSACTION_REPLY_LENGTH
       ) {
         throw new Error(
           "Redis usage counter transaction returned an unexpected reply shape",
@@ -92,7 +92,9 @@ export class RedisUsageCounter implements UsageCounter {
   }
 
   private getBucketExpiryDate(value: Date) {
-    const usageDayStart = this.toUtcUsageDateValue(this.toUtcUsageDateKey(value));
+    const usageDayStart = this.toUtcUsageDateValue(
+      this.toUtcUsageDateKey(value),
+    );
     const expiresAt = new Date(usageDayStart);
 
     expiresAt.setUTCDate(

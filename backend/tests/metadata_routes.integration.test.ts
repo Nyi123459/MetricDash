@@ -17,6 +17,7 @@ describe("Metadata routes", () => {
   let sourceServer: http.Server;
   let sourceBaseUrl = "";
   let apiKeySecret = "";
+  let sessionCookies: string[] = [];
 
   beforeAll(async () => {
     await prisma.apiKey.deleteMany({
@@ -83,7 +84,9 @@ describe("Metadata routes", () => {
       .post("/api/v1/auth/login")
       .send({ email: testEmail, password });
 
-    const sessionCookies = loginResponse.headers["set-cookie"];
+    sessionCookies = Array.isArray(loginResponse.headers["set-cookie"])
+      ? loginResponse.headers["set-cookie"]
+      : [];
 
     const createResponse = await request(app)
       .post("/api/v1/api-keys")
@@ -96,7 +99,16 @@ describe("Metadata routes", () => {
   });
 
   afterAll(async () => {
-    sourceServer.close();
+    await new Promise<void>((resolve, reject) => {
+      sourceServer.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve();
+      });
+    });
 
     await prisma.apiKey.deleteMany({
       where: {
@@ -130,6 +142,9 @@ describe("Metadata routes", () => {
       .set("Authorization", `Bearer ${apiKeySecret}`);
 
     expect(metadataResponse.status).toBe(200);
+    expect(metadataResponse.headers["x-ratelimit-limit"]).toBeTruthy();
+    expect(metadataResponse.headers["x-ratelimit-remaining"]).toBeTruthy();
+    expect(metadataResponse.headers["x-ratelimit-reset"]).toBeTruthy();
     expect(metadataResponse.body).toMatchObject({
       url: `${sourceBaseUrl}/article`,
       canonical_url: `${sourceBaseUrl}/canonical-article`,
@@ -169,5 +184,15 @@ describe("Metadata routes", () => {
       code: "VALIDATION_ERROR",
       message: "URL must be a valid http or https URL",
     });
+  });
+
+  it("does not allow a dashboard session cookie to replace the API key", async () => {
+    const metadataResponse = await request(app)
+      .get("/api/v1/metadata")
+      .query({ url: `${sourceBaseUrl}/article` })
+      .set("Cookie", sessionCookies);
+
+    expect(metadataResponse.status).toBe(401);
+    expect(metadataResponse.body.error.code).toBe("API_KEY_REQUIRED");
   });
 });

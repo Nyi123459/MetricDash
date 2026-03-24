@@ -6,6 +6,7 @@ function writeLog(level: LogLevel, message: string, context?: LogContext) {
   const payload = {
     level,
     message,
+    service: "metricdash-backend",
     timestamp: new Date().toISOString(),
     ...(context ?? {}),
   };
@@ -14,6 +15,11 @@ function writeLog(level: LogLevel, message: string, context?: LogContext) {
 
   if (level === "error") {
     console.error(line);
+    return;
+  }
+
+  if (level === "warn") {
+    console.warn(line);
     return;
   }
 

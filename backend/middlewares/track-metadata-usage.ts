@@ -1,9 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { UsageTrackingService } from "../services/usage_tracking_service";
 
-export function trackMetadataUsage(
-  usageTrackingService: UsageTrackingService,
-) {
+export function trackMetadataUsage(usageTrackingService: UsageTrackingService) {
   return (req: Request, res: Response, next: NextFunction) => {
     const startedAt =
       typeof res.locals.requestStartedAt === "number"

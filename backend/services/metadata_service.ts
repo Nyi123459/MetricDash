@@ -1,18 +1,40 @@
 import { AppError } from "../exceptions/app-error";
 import { MetadataCache } from "../contracts/metadata_cache";
 import { GetMetadataInput, MetadataResponse } from "../models/metadata";
+import { logger } from "../utils/logger";
 
 type FetchLike = typeof fetch;
 type ParsedTag = Record<string, string>;
 type JsonLdEntry = Record<string, unknown>;
+type MetadataFetchPolicy = {
+  timeoutMs: number;
+  maxAttempts: number;
+  retryDelayMs: number;
+};
+
+type MetadataFetchFailure = {
+  error: AppError;
+  retryable: boolean;
+};
 
 export class MetadataService {
-  private static readonly FETCH_TIMEOUT_MS = 50000;
+  private static readonly DEFAULT_FETCH_POLICY: MetadataFetchPolicy = {
+    timeoutMs: 10000,
+    maxAttempts: 2,
+    retryDelayMs: 250,
+  };
+  private readonly fetchPolicy: MetadataFetchPolicy;
 
   constructor(
     private readonly fetchImpl: FetchLike = fetch,
     private readonly metadataCache?: MetadataCache,
-  ) {}
+    fetchPolicy: Partial<MetadataFetchPolicy> = {},
+  ) {
+    this.fetchPolicy = {
+      ...MetadataService.DEFAULT_FETCH_POLICY,
+      ...fetchPolicy,
+    };
+  }
 
   async getMetadata(input: GetMetadataInput): Promise<MetadataResponse> {
     const requestedUrl = this.normalizeInputUrl(input.url);
@@ -28,7 +50,7 @@ export class MetadataService {
       };
     }
 
-    const page = await this.fetchPage(requestedUrl);
+    const page = await this.fetchPage(requestedUrl, input.requestId);
     const metadata = this.extractMetadata({
       requestedUrl,
       finalUrl: page.finalUrl,
@@ -79,11 +101,74 @@ export class MetadataService {
     return parsedUrl.toString();
   }
 
-  private async fetchPage(url: string) {
+  private async fetchPage(url: string, requestId?: string) {
+    let lastFailure: MetadataFetchFailure | null = null;
+
+    for (
+      let attempt = 1;
+      attempt <= this.fetchPolicy.maxAttempts;
+      attempt += 1
+    ) {
+      try {
+        const page = await this.fetchPageAttempt(url);
+
+        if (attempt > 1) {
+          logger.info("Metadata fetch succeeded after retry", {
+            requestId,
+            url,
+            attempt,
+            maxAttempts: this.fetchPolicy.maxAttempts,
+          });
+        }
+
+        return page;
+      } catch (error) {
+        const failure = this.normalizeFetchFailure(error);
+        const shouldRetry =
+          failure.retryable && attempt < this.fetchPolicy.maxAttempts;
+
+        lastFailure = failure;
+
+        logger[shouldRetry ? "warn" : "error"](
+          shouldRetry
+            ? "Metadata fetch attempt failed, retrying"
+            : "Metadata fetch failed",
+          {
+            requestId,
+            url,
+            attempt,
+            maxAttempts: this.fetchPolicy.maxAttempts,
+            code: failure.error.code,
+            statusCode: failure.error.statusCode,
+            message: failure.error.message,
+            details: failure.error.details,
+          },
+        );
+
+        if (!shouldRetry) {
+          throw this.withFetchPolicyContext(failure.error, attempt);
+        }
+
+        await this.delay(this.fetchPolicy.retryDelayMs * attempt);
+      }
+    }
+
+    throw this.withFetchPolicyContext(
+      lastFailure?.error ??
+        new AppError(
+          502,
+          "METADATA_FETCH_FAILED",
+          "Unable to fetch metadata source",
+        ),
+      this.fetchPolicy.maxAttempts,
+    );
+  }
+
+  private async fetchPageAttempt(url: string) {
     const controller = new AbortController();
     const timeout = setTimeout(
       () => controller.abort(),
-      MetadataService.FETCH_TIMEOUT_MS,
+      this.fetchPolicy.timeoutMs,
     );
 
     try {
@@ -101,6 +186,9 @@ export class MetadataService {
           502,
           "METADATA_FETCH_FAILED",
           `Metadata source responded with status ${response.status}`,
+          {
+            upstreamStatus: response.status,
+          },
         );
       }
 
@@ -111,6 +199,9 @@ export class MetadataService {
           415,
           "METADATA_CONTENT_TYPE_INVALID",
           "Metadata source must return an HTML document",
+          {
+            contentType,
+          },
         );
       }
 
@@ -139,6 +230,9 @@ export class MetadataService {
           504,
           "METADATA_FETCH_TIMEOUT",
           "Metadata source timed out",
+          {
+            timeoutMs: this.fetchPolicy.timeoutMs,
+          },
         );
       }
 
@@ -146,10 +240,72 @@ export class MetadataService {
         502,
         "METADATA_FETCH_FAILED",
         "Unable to fetch metadata source",
+        {
+          reason:
+            error instanceof Error ? error.message : "Unknown fetch error",
+        },
       );
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  private normalizeFetchFailure(error: unknown): MetadataFetchFailure {
+    if (error instanceof AppError) {
+      return {
+        error,
+        retryable:
+          error.code === "METADATA_FETCH_TIMEOUT" ||
+          (error.code === "METADATA_FETCH_FAILED" &&
+            this.isRetryableUpstreamStatus(error.details)),
+      };
+    }
+
+    return {
+      error: new AppError(
+        502,
+        "METADATA_FETCH_FAILED",
+        "Unable to fetch metadata source",
+      ),
+      retryable: true,
+    };
+  }
+
+  private isRetryableUpstreamStatus(details: unknown) {
+    const upstreamStatus =
+      typeof details === "object" &&
+      details !== null &&
+      "upstreamStatus" in details &&
+      typeof details.upstreamStatus === "number"
+        ? details.upstreamStatus
+        : null;
+
+    return (
+      upstreamStatus === 408 ||
+      upstreamStatus === 429 ||
+      (typeof upstreamStatus === "number" && upstreamStatus >= 500)
+    );
+  }
+
+  private withFetchPolicyContext(error: AppError, attempts: number) {
+    const details =
+      typeof error.details === "object" &&
+      error.details !== null &&
+      !Array.isArray(error.details)
+        ? error.details
+        : {};
+
+    return new AppError(error.statusCode, error.code, error.message, {
+      ...details,
+      attempts,
+      timeoutMs: this.fetchPolicy.timeoutMs,
+    });
+  }
+
+  private async delay(ms: number) {
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, ms);
+    });
   }
 
   private extractMetadata(input: {

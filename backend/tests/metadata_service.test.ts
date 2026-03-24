@@ -142,6 +142,48 @@ describe("MetadataService", () => {
     });
   });
 
+  it("retries once after a transient upstream failure and then succeeds", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(
+        createMockResponse({
+          ok: false,
+          status: 503,
+          url: "https://example.com/articles/test",
+          contentType: "text/html; charset=utf-8",
+          html: "Service unavailable",
+        }),
+      )
+      .mockResolvedValueOnce(
+        createMockResponse({
+          ok: true,
+          status: 200,
+          url: "https://example.com/articles/test",
+          contentType: "text/html; charset=utf-8",
+          html: `
+            <html>
+              <head>
+                <title>Recovered page</title>
+              </head>
+              <body>Recovered</body>
+            </html>
+          `,
+        }),
+      );
+
+    const service = new MetadataService(fetchMock as typeof fetch, undefined, {
+      retryDelayMs: 0,
+    });
+
+    const result = await service.getMetadata({
+      url: "https://example.com/articles/test",
+      requestId: "mdreq-retry-test",
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.title).toBe("Recovered page");
+  });
+
   it("rejects invalid URLs", async () => {
     const service = new MetadataService(jest.fn() as typeof fetch);
 

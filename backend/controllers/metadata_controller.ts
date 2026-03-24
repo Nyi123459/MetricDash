@@ -11,6 +11,7 @@ export class MetadataController {
 
     const metadata = await this.metadataService.getMetadata({
       url: validatedQuery?.url ?? String(req.query.url ?? ""),
+      requestId: res.locals.requestId,
     });
 
     res.locals.metadataCacheStatus = metadata.cache.hit ? "hit" : "miss";
