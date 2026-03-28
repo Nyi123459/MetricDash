@@ -12,13 +12,12 @@ export function PricingSection() {
       className="md-site-section px-4 py-20 sm:px-6 lg:px-8 lg:py-24"
     >
       <div className="mx-auto max-w-7xl">
-        <RevealInView className="max-w-3xl">
+        <RevealInView className="max-w-5xl">
           <p className="md-site-kicker">Pricing direction</p>
-          <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-4xl lg:text-5xl">
-            Pricing is framed for a V1 launch, not a finished enterprise
-            catalog.
+          <h2 className="mt-4 text-5xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-4xl lg:text-5xl">
+            Pricing is framed for launch, not a finished enterprise catalog.
           </h2>
-          <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">
+          <p className="mt-4 max-w-4xl text-lg leading-8 text-slate-600">
             The current product direction still prioritizes core metadata
             quality, dashboard visibility, and reliability. These plans
             communicate that direction without pretending the billing system is
@@ -45,11 +44,6 @@ export function PricingSection() {
                       {plan.price}
                     </p>
                   </div>
-                  {plan.featured ? (
-                    <span className="md-site-kicker border-transparent bg-sky-50 text-sky-700">
-                      Launch focus
-                    </span>
-                  ) : null}
                 </div>
 
                 <p className="mt-6 text-lg leading-7 text-slate-900">

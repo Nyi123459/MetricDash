@@ -1,6 +1,8 @@
 export type GetBillingEstimateInput = {
   userId: number;
   now?: Date;
+  activityStartDate?: Date;
+  activityEndDate?: Date;
 };
 
 export type BillingPricingModel = {
@@ -40,9 +42,15 @@ export type BillingEstimateDay = {
   cumulativeEstimatedCostCents: number;
 };
 
+export type BillingActivityRange = {
+  startDate: string;
+  endDate: string;
+};
+
 export type BillingEstimateResponse = {
   pricingModel: BillingPricingModel;
   cycle: BillingEstimateCycle;
+  activityRange: BillingActivityRange;
   dailyBreakdown: BillingEstimateDay[];
 };
 

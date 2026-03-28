@@ -1,6 +1,7 @@
 export const AUTH_QUERY_KEYS = {
   login: ["auth", "login"],
   register: ["auth", "register"],
+  logout: ["auth", "logout"],
 } as const;
 
 export const PASSWORD_MIN_LENGTH = 8;

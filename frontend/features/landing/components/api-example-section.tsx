@@ -13,13 +13,13 @@ export function ApiExampleSection() {
       className="md-site-section md-site-section-alt px-4 py-20 sm:px-6 lg:px-8 lg:py-24"
     >
       <div className="mx-auto max-w-7xl">
-        <RevealInView className="max-w-3xl">
+        <RevealInView className="max-w-5xl">
           <p className="md-site-kicker">API shape</p>
-          <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-4xl lg:text-5xl">
+          <h2 className="mt-4 text-5xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-4xl lg:text-5xl">
             See the response shape before you wire the UI.
           </h2>
-          <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">
-            The examples stay close to the documented V1 contract: one URL goes
+          <p className="mt-4 max-w-4xl text-lg leading-8 text-slate-600">
+            The examples stay close to the documented API contract: one URL goes
             in, normalized metadata and cache context come back out.
           </p>
         </RevealInView>

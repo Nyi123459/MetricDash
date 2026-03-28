@@ -150,7 +150,7 @@ export const featureHighlights: FeatureItem[] = [
   },
   {
     icon: BookText,
-    title: "Built for V1 product fit",
+    title: "Built for focused product fit",
     description:
       "Focused on chat, community, and publishing apps instead of drifting into generic analytics.",
   },
@@ -178,7 +178,7 @@ export const comparisonRows: ComparisonRow[] = [
     metricdash: "Usage pages and request history in one place",
   },
   {
-    feature: "V1 shipping speed",
+    feature: "Shipping speed",
     diy: "Weeks of infra work before polish",
     metricdash: "Start with one metadata workflow now",
   },
@@ -189,7 +189,7 @@ export const pricingCards: PricingCard[] = [
     name: "Explore",
     price: "$0",
     description:
-      "A simple starting point while MetricDash sharpens the V1 workflow.",
+      "A simple starting point while MetricDash sharpens the core workflow.",
     notes:
       "Includes up to 10k monthly billable requests while teams validate preview quality and integration fit.",
     ctaLabel: "Create account",
@@ -199,7 +199,7 @@ export const pricingCards: PricingCard[] = [
       "API key creation for local and staging usage",
       "Early metadata response testing",
       "10k included billable requests each month",
-      "Roadmap updates as V1 expands",
+      "Roadmap updates as the product expands",
     ],
   },
   {
@@ -208,7 +208,7 @@ export const pricingCards: PricingCard[] = [
     description:
       "Usage-based pricing once monthly included billable requests are exceeded.",
     notes:
-      "Dashboard billing estimates are live in V1. Stripe collection and metering come later.",
+      "Dashboard billing estimates are live today. Stripe collection and metering come later.",
     ctaLabel: "Open dashboard",
     ctaHref: "/dashboard",
     featured: true,
@@ -241,7 +241,7 @@ export const faqs: FaqItem[] = [
   {
     question: "What problem does MetricDash solve first?",
     answer:
-      "V1 focuses on one sharp product: turning pasted URLs into reliable link previews for chat, community, and publishing apps without building the scraping, caching, usage tracking, and key management stack yourself.",
+      "MetricDash focuses on one sharp product: turning pasted URLs into reliable link previews for chat, community, and publishing apps without building the scraping, caching, usage tracking, and key management stack yourself.",
   },
   {
     question: "Is the response shape stable?",
@@ -249,7 +249,7 @@ export const faqs: FaqItem[] = [
       "That is the goal of the metadata engine. The landing page showcases the normalized response contract described in the product direction so frontend and backend consumers can depend on a predictable shape.",
   },
   {
-    question: "Does the dashboard already matter in V1?",
+    question: "Does the dashboard already matter?",
     answer:
       "Yes. The dashboard is part of the core loop because API keys, usage, and request logs help product teams understand how preview traffic behaves after integration.",
   },

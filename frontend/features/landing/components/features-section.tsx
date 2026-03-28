@@ -6,15 +6,15 @@ export function FeaturesSection() {
   return (
     <section className="md-site-section px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
       <div className="mx-auto max-w-7xl">
-        <RevealInView className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl">
+        <RevealInView className="flex flex-col gap-6">
+          <div className="max-w-5xl">
             <p className="md-site-kicker">Feature coverage</p>
-            <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-4xl lg:text-5xl">
+            <h2 className="mt-4 text-5xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-4xl lg:text-5xl">
               Everything around the metadata call that teams usually forget to
               budget for.
             </h2>
           </div>
-          <p className="max-w-2xl text-base leading-7 text-slate-600">
+          <p className="max-w-4xl text-base leading-7 text-slate-600">
             The page mirrors the current product direction: auth, API keys,
             metadata extraction, cache, rate limiting, usage counting, logs, and
             dashboard visibility.

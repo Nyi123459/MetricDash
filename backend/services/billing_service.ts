@@ -12,8 +12,8 @@ type UsageRecordWithApiKey = Awaited<
   ReturnType<UsageRecordRepository["listByUserAndDateRange"]>
 >[number];
 
-export const V1_LAUNCH_PRICING_MODEL: BillingPricingModel = {
-  name: "V1 launch pricing",
+export const LAUNCH_PRICING_MODEL: BillingPricingModel = {
+  name: "Launch pricing",
   currency: "USD",
   includedBillableRequests: 10_000,
   overageBlockSize: 1_000,
@@ -33,18 +33,37 @@ export class BillingService {
     input: GetBillingEstimateInput,
   ): Promise<BillingEstimateResponse> {
     const now = input.now ?? new Date();
-    const cycleWindow = this.getCycleWindow(now);
-    const usageRecords =
-      await this.usageRecordRepository.listByUserAndDateRange(
+    const normalizedNow = this.toBillingDate(now);
+    const cycleWindow = this.getCycleWindow(normalizedNow);
+    const activityWindow = this.getActivityWindow({
+      activityStartDate: input.activityStartDate,
+      activityEndDate: input.activityEndDate,
+      fallbackStartDate: cycleWindow.periodStart,
+      now: normalizedNow,
+    });
+
+    const [cycleUsageRecords, activityUsageRecords] = await Promise.all([
+      this.usageRecordRepository.listByUserAndDateRange(
         input.userId,
         cycleWindow.periodStart,
-      );
+        normalizedNow,
+      ),
+      this.usageRecordRepository.listByUserAndDateRange(
+        input.userId,
+        activityWindow.startDate,
+        activityWindow.endDate,
+      ),
+    ]);
 
-    const cycle = this.buildCycleEstimate(usageRecords, cycleWindow, now);
+    const cycle = this.buildCycleEstimate(
+      cycleUsageRecords,
+      cycleWindow,
+      normalizedNow,
+    );
     const dailyBreakdown = this.buildDailyBreakdown(
-      usageRecords,
-      cycleWindow.periodStart,
-      now,
+      activityUsageRecords,
+      activityWindow.startDate,
+      activityWindow.endDate,
     );
 
     await this.billingCycleRepository.upsertCycleSummary({
@@ -59,8 +78,12 @@ export class BillingService {
     });
 
     return {
-      pricingModel: V1_LAUNCH_PRICING_MODEL,
+      pricingModel: LAUNCH_PRICING_MODEL,
       cycle,
+      activityRange: {
+        startDate: this.toDateKey(activityWindow.startDate),
+        endDate: this.toDateKey(activityWindow.endDate),
+      },
       dailyBreakdown,
     };
   }
@@ -108,15 +131,14 @@ export class BillingService {
       cacheHits: totals.cacheHits,
       cacheMisses: totals.cacheMisses,
       billableRequests,
-      includedBillableRequests:
-        V1_LAUNCH_PRICING_MODEL.includedBillableRequests,
+      includedBillableRequests: LAUNCH_PRICING_MODEL.includedBillableRequests,
       remainingIncludedRequests: Math.max(
         0,
-        V1_LAUNCH_PRICING_MODEL.includedBillableRequests - billableRequests,
+        LAUNCH_PRICING_MODEL.includedBillableRequests - billableRequests,
       ),
       overageRequests: Math.max(
         0,
-        billableRequests - V1_LAUNCH_PRICING_MODEL.includedBillableRequests,
+        billableRequests - LAUNCH_PRICING_MODEL.includedBillableRequests,
       ),
       estimatedCostCents,
       projectedBillableRequests,
@@ -129,7 +151,7 @@ export class BillingService {
   private buildDailyBreakdown(
     usageRecords: UsageRecordWithApiKey[],
     periodStart: Date,
-    now: Date,
+    periodEnd: Date,
   ): BillingEstimateDay[] {
     const aggregatedByDate = new Map<
       string,
@@ -153,7 +175,7 @@ export class BillingService {
 
     const breakdown: BillingEstimateDay[] = [];
     const cursor = new Date(periodStart);
-    const lastVisibleDate = this.toDateKey(now);
+    const lastVisibleDate = this.toDateKey(periodEnd);
     let cumulativeBillableRequests = 0;
 
     while (this.toDateKey(cursor) <= lastVisibleDate) {
@@ -184,12 +206,12 @@ export class BillingService {
   }
 
   private calculateEstimatedCostCents(billableRequests: number) {
-    const includedRequests = V1_LAUNCH_PRICING_MODEL.includedBillableRequests;
+    const includedRequests = LAUNCH_PRICING_MODEL.includedBillableRequests;
     const overageRequests = Math.max(0, billableRequests - includedRequests);
 
     return Math.ceil(
-      (overageRequests * V1_LAUNCH_PRICING_MODEL.overageBlockPriceCents) /
-        V1_LAUNCH_PRICING_MODEL.overageBlockSize,
+      (overageRequests * LAUNCH_PRICING_MODEL.overageBlockPriceCents) /
+        LAUNCH_PRICING_MODEL.overageBlockSize,
     );
   }
 
@@ -206,6 +228,20 @@ export class BillingService {
       periodStart,
       periodEnd,
       totalDays,
+    };
+  }
+
+  private getActivityWindow(input: {
+    activityStartDate?: Date;
+    activityEndDate?: Date;
+    fallbackStartDate: Date;
+    now: Date;
+  }) {
+    return {
+      startDate: this.toBillingDate(
+        input.activityStartDate ?? input.fallbackStartDate,
+      ),
+      endDate: this.toBillingDate(input.activityEndDate ?? input.now),
     };
   }
 

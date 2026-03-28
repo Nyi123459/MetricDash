@@ -89,12 +89,17 @@ export class UsageRecordRepository extends BaseRepository<UsageRecord> {
     });
   }
 
-  async listByUserAndDateRange(userId: number, startDate: Date) {
+  async listByUserAndDateRange(
+    userId: number,
+    startDate: Date,
+    endDate?: Date,
+  ) {
     return this.prisma.usageRecord.findMany({
       where: {
         user_id: userId,
         usage_date: {
           gte: startDate,
+          ...(endDate ? { lte: endDate } : {}),
         },
       },
       include: {

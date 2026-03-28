@@ -13,6 +13,7 @@ describe("Billing routes", () => {
   const testEmail = `billing-${Date.now()}@example.com`;
   const password = "secret123";
   let sessionCookies: string[] = [];
+  const expectedToday = new Date().toISOString().slice(0, 10);
 
   beforeAll(async () => {
     await prisma.billingCycle.deleteMany({
@@ -157,6 +158,10 @@ describe("Billing routes", () => {
       includedBillableRequests: 10000,
       overageBlockPriceCents: 60,
     });
+    expect(response.body.activityRange).toEqual({
+      startDate: "2026-03-01",
+      endDate: expectedToday,
+    });
     expect(response.body.cycle).toMatchObject({
       requestCount: 13500,
       cacheHits: 1000,
@@ -181,5 +186,33 @@ describe("Billing routes", () => {
     expect(storedBillingCycle).not.toBeNull();
     expect(storedBillingCycle?.billable_requests).toBe(12500);
     expect(storedBillingCycle?.estimated_cost_cents).toBe(150);
+  });
+
+  it("filters billing activity by the requested date range", async () => {
+    const response = await request(app)
+      .get("/api/v1/billing/estimate")
+      .query({
+        startDate: "2026-03-10",
+        endDate: "2026-03-12",
+      })
+      .set("Cookie", sessionCookies);
+
+    expect(response.status).toBe(200);
+    expect(response.body.activityRange).toEqual({
+      startDate: "2026-03-10",
+      endDate: "2026-03-12",
+    });
+    expect(response.body.cycle.billableRequests).toBe(12500);
+    expect(response.body.dailyBreakdown).toHaveLength(3);
+    expect(response.body.dailyBreakdown[0]).toMatchObject({
+      date: "2026-03-10",
+      requestCount: 0,
+      billableRequests: 0,
+    });
+    expect(response.body.dailyBreakdown[2]).toMatchObject({
+      date: "2026-03-12",
+      requestCount: 9500,
+      billableRequests: 9500,
+    });
   });
 });

@@ -8,12 +8,12 @@ export function WorkflowSection() {
       className="md-site-section md-site-section-alt px-4 py-20 sm:px-6 lg:px-8 lg:py-24"
     >
       <div className="mx-auto max-w-7xl">
-        <RevealInView className="max-w-3xl">
+        <RevealInView className="max-w-5xl">
           <p className="md-site-kicker">How it works</p>
-          <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-4xl lg:text-5xl">
-            The V1 loop stays intentionally simple.
+          <h2 className="mt-4 text-5xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-4xl lg:text-5xl">
+            The core loop stays intentionally simple.
           </h2>
-          <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">
+          <p className="mt-4 max-w-4xl text-lg leading-8 text-slate-600">
             A clean metadata path matters more than flashy platform sprawl. The
             flow below mirrors the current product direction and dashboard
             story.

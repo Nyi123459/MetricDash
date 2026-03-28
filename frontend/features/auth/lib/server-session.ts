@@ -11,34 +11,42 @@ type ValidatedSession = {
   user: AuthUser;
 };
 
+type SessionCookies = {
+  accessToken: string | null;
+  refreshToken: string | null;
+};
+
 function getApiBaseUrl() {
   return process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8800";
 }
 
-async function getCookieHeader() {
+async function getSessionCookies(): Promise<SessionCookies> {
   const cookieStore = await cookies();
-  const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE_NAME)?.value;
-  const refreshToken = cookieStore.get(REFRESH_TOKEN_COOKIE_NAME)?.value;
-  const values = [
-    accessToken
-      ? `${ACCESS_TOKEN_COOKIE_NAME}=${encodeURIComponent(accessToken)}`
-      : null,
-    refreshToken
-      ? `${REFRESH_TOKEN_COOKIE_NAME}=${encodeURIComponent(refreshToken)}`
-      : null,
-  ].filter(Boolean);
+  return {
+    accessToken: cookieStore.get(ACCESS_TOKEN_COOKIE_NAME)?.value ?? null,
+    refreshToken: cookieStore.get(REFRESH_TOKEN_COOKIE_NAME)?.value ?? null,
+  };
+}
 
-  return values.join("; ");
+function buildAccessTokenCookieHeader(accessToken: string | null) {
+  if (!accessToken) {
+    return "";
+  }
+
+  return `${ACCESS_TOKEN_COOKIE_NAME}=${encodeURIComponent(accessToken)}`;
 }
 
 export async function getValidatedSession(): Promise<ValidatedSession | null> {
-  const cookieHeader = await getCookieHeader();
+  const { accessToken } = await getSessionCookies();
+  const cookieHeader = buildAccessTokenCookieHeader(accessToken);
 
   if (!cookieHeader) {
     return null;
   }
 
   try {
+    // Server components cannot persist rotated cookies back to the browser, so
+    // we intentionally validate only the access token here.
     const response = await fetch(`${getApiBaseUrl()}/api/v1/auth/me`, {
       method: "GET",
       headers: {
@@ -59,6 +67,11 @@ export async function getValidatedSession(): Promise<ValidatedSession | null> {
   } catch {
     return null;
   }
+}
+
+export async function hasRefreshTokenSessionCandidate() {
+  const { refreshToken } = await getSessionCookies();
+  return Boolean(refreshToken);
 }
 
 export async function requireValidatedSession() {

@@ -9,12 +9,12 @@ export function AudienceSection() {
       className="md-site-section px-4 py-20 sm:px-6 lg:px-8 lg:py-24"
     >
       <div className="mx-auto max-w-7xl">
-        <RevealInView className="max-w-3xl">
+        <RevealInView className="max-w-5xl">
           <p className="md-site-kicker">Who it is for</p>
-          <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-4xl lg:text-5xl">
+          <h2 className="mt-4 text-5xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-4xl lg:text-5xl">
             A focused product for link-heavy experiences.
           </h2>
-          <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">
+          <p className="mt-4 max-w-4xl text-lg leading-8 text-slate-600">
             MetricDash is not trying to be every kind of analytics platform. It
             is designed around the link preview workflow that matters in chat,
             community, and publishing products.

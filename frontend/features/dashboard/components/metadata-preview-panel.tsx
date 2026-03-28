@@ -5,7 +5,16 @@ import { useMemo, useState } from "react";
 import { KeyRound, Link2, Sparkles } from "lucide-react";
 import { APP_ROUTES } from "@/common/constants/routes";
 import { getApiErrorMessage } from "@/common/lib/api-errors";
+import { Button } from "@/common/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/common/components/ui/select";
 import { useApiKeys } from "@/features/api-keys/hooks/use-api-keys";
+import { MetadataAssetPreview } from "@/features/dashboard/components/metadata-asset-preview";
 import { useDashboardMetadataPreview } from "@/features/dashboard/hooks/use-dashboard-data";
 
 const initialFormState = {
@@ -36,7 +45,7 @@ export function MetadataPreviewPanel() {
     formState.apiKeyId || activeApiKeys[0]?.id.toString() || "";
   const preview = metadataPreviewMutation.data;
 
-  const metadataRows = preview
+  const metadataTextRows = preview
     ? [
         { label: "Normalized URL", value: preview.metadata.url },
         {
@@ -61,8 +70,26 @@ export function MetadataPreviewPanel() {
           label: "Published at",
           value: preview.metadata.published_at ?? "Not detected",
         },
-        { label: "Image", value: preview.metadata.image ?? "Not detected" },
-        { label: "Favicon", value: preview.metadata.favicon ?? "Not detected" },
+      ]
+    : [];
+
+  const previewSubject =
+    preview?.metadata.title ?? preview?.metadata.site_name ?? "selected URL";
+
+  const assetRows = preview
+    ? [
+        {
+          kind: "image" as const,
+          label: "Image",
+          url: preview.metadata.image,
+          alt: `Preview image for ${previewSubject}`,
+        },
+        {
+          kind: "icon" as const,
+          label: "Favicon",
+          url: preview.metadata.favicon,
+          alt: `Favicon for ${previewSubject}`,
+        },
       ]
     : [];
 
@@ -110,20 +137,15 @@ export function MetadataPreviewPanel() {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+    <div className="flex flex-col gap-6">
       <section className="md-dashboard-panel p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500">
-              Metadata playground
-            </p>
             <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
               Run the extraction pipeline
             </h2>
-            <p className="mt-2 max-w-xl text-sm leading-7 text-slate-600">
+            <p className="mt-2 w-full text-sm leading-7 text-slate-600">
               Send a real preview request through one of your existing API keys.
-              The backend tracks usage, rate limits, and request logging exactly
-              like customer traffic.
             </p>
           </div>
         </div>
@@ -164,23 +186,27 @@ export function MetadataPreviewPanel() {
                 >
                   Active API key
                 </label>
-                <select
-                  id="dashboard-preview-api-key"
+                <Select
                   value={selectedApiKeyId}
-                  onChange={(event) =>
+                  onValueChange={(value) => {
+                    setClientMessage(null);
                     setFormState((current) => ({
                       ...current,
-                      apiKeyId: event.target.value,
-                    }))
-                  }
-                  className="md-dashboard-select"
+                      apiKeyId: value,
+                    }));
+                  }}
                 >
-                  {activeApiKeys.map((apiKey) => (
-                    <option key={apiKey.id} value={apiKey.id}>
-                      {apiKey.name} ({apiKey.key_prefix}...)
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="dashboard-preview-api-key">
+                    <SelectValue placeholder="Select an active API key" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeApiKeys.map((apiKey) => (
+                      <SelectItem key={apiKey.id} value={apiKey.id.toString()}>
+                        {apiKey.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {(clientMessage || metadataPreviewMutation.isError) && (
@@ -194,7 +220,7 @@ export function MetadataPreviewPanel() {
               )}
 
               <div className="flex flex-wrap gap-3">
-                <button
+                <Button
                   type="submit"
                   className="md-dashboard-button-primary inline-flex h-12 items-center justify-center gap-2 px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
                   disabled={metadataPreviewMutation.isPending}
@@ -203,7 +229,7 @@ export function MetadataPreviewPanel() {
                   {metadataPreviewMutation.isPending
                     ? "Extracting..."
                     : "Extract metadata"}
-                </button>
+                </Button>
                 <Link
                   href={APP_ROUTES.dashboardApiKeys}
                   className="md-dashboard-button-secondary inline-flex h-12 items-center justify-center px-5 text-sm font-semibold hover:bg-white"
@@ -214,7 +240,7 @@ export function MetadataPreviewPanel() {
 
               <div className="rounded-[1.35rem] border border-cyan-400/12 bg-cyan-400/6 p-4 text-sm leading-7 text-slate-600">
                 The dashboard never exposes raw secrets in the browser. It sends
-                the preview request through your selected key on the backend,
+                the preview request through your selected key on the server,
                 then records the result in the same observability flow used by
                 the public metadata API.
               </div>
@@ -244,9 +270,6 @@ export function MetadataPreviewPanel() {
 
       <section className="md-dashboard-panel p-6">
         <div>
-          <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500">
-            Normalized response
-          </p>
           <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
             What the metadata engine returned
           </h2>
@@ -272,7 +295,19 @@ export function MetadataPreviewPanel() {
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
-              {metadataRows.map((row) => (
+              {assetRows.map((row) => (
+                <MetadataAssetPreview
+                  key={row.label}
+                  kind={row.kind}
+                  label={row.label}
+                  url={row.url}
+                  alt={row.alt}
+                />
+              ))}
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              {metadataTextRows.map((row) => (
                 <div key={row.label} className="md-dashboard-panel-muted p-4">
                   <p className="text-[0.68rem] uppercase tracking-[0.18em] text-slate-500">
                     {row.label}

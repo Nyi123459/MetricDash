@@ -41,8 +41,8 @@ export function MarketingFooter() {
               </div>
             </div>
             <p className="mt-5 max-w-md text-sm leading-7 text-slate-600">
-              Focused on the V1 workflow: auth, API keys, metadata, cache, rate
-              limiting, usage, and logs for teams shipping richer URLs.
+              Focused on the current workflow: auth, API keys, metadata, cache,
+              rate limiting, usage, and logs for teams shipping richer URLs.
             </p>
           </div>
 
@@ -100,8 +100,7 @@ export function MarketingFooter() {
         </div>
 
         <div className="mt-8 border-t border-slate-200 pt-6 text-sm text-slate-500">
-          Copyright 2026 MetricDash. Built around the current V1 product
-          direction.
+          Copyright 2026 MetricDash. Built around the current product direction.
         </div>
       </RevealInView>
     </footer>

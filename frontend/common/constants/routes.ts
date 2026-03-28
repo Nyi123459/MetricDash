@@ -3,6 +3,7 @@ export const APP_ROUTES = {
   login: "/login",
   register: "/register",
   dashboard: "/dashboard",
+  dashboardMetadata: "/dashboard/metadata",
   dashboardApiKeys: "/dashboard/api-keys",
   dashboardUsage: "/dashboard/usage",
   dashboardLogs: "/dashboard/logs",

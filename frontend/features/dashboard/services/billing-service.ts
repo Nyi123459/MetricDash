@@ -37,16 +37,27 @@ export type BillingEstimateDay = {
   cumulativeEstimatedCostCents: number;
 };
 
+export type BillingEstimateActivityRange = {
+  startDate: string;
+  endDate: string;
+};
+
 export type BillingEstimateResponse = {
   pricingModel: BillingPricingModel;
   cycle: BillingEstimateCycle;
+  activityRange: BillingEstimateActivityRange;
   dailyBreakdown: BillingEstimateDay[];
   requestId: string;
 };
 
-export async function getBillingEstimate() {
+export async function getBillingEstimate(
+  activityRange: BillingEstimateActivityRange,
+) {
   const response = await apiClient.get<BillingEstimateResponse>(
     "/api/v1/billing/estimate",
+    {
+      params: activityRange,
+    },
   );
 
   return response.data;

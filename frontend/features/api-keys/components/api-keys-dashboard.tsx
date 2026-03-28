@@ -8,6 +8,7 @@ import {
   useCreateApiKey,
   useRevokeApiKey,
 } from "@/features/api-keys/hooks/use-api-keys";
+import { maskApiKey } from "@/features/api-keys/lib/mask-api-key";
 import { DashboardFrame } from "@/features/dashboard/components/dashboard-frame";
 import { DashboardMetricGrid } from "@/features/dashboard/components/dashboard-metric-grid";
 import { DashboardEmptyState } from "@/features/dashboard/components/dashboard-empty-state";
@@ -28,8 +29,12 @@ export function ApiKeysDashboard() {
   const [serverMessage, setServerMessage] = useState<string | null>(null);
   const [createdSecret, setCreatedSecret] = useState<string | null>(null);
   const [copiedSecret, setCopiedSecret] = useState(false);
+  // const [copiedPrefixKeyId, setCopiedPrefixKeyId] = useState<number | null>(
+  //   null,
+  // );
 
   const apiKeys = apiKeysQuery.data?.data ?? [];
+  console.log("API Keys:", apiKeys);
   const activeKeysCount = apiKeys.filter((apiKey) => {
     const isRevoked = apiKey.revoked_at !== null;
     const isExpired =
@@ -127,6 +132,16 @@ export function ApiKeysDashboard() {
     }
   }
 
+  // async function handleCopyKeyPrefix(apiKeyId: number, keyPrefix: string) {
+  //   try {
+  //     await navigator.clipboard.writeText(maskApiKey(keyPrefix));
+  //     setServerMessage(null);
+  //     setCopiedPrefixKeyId(apiKeyId);
+  //   } catch {
+  //     setServerMessage("Clipboard access failed. Copy the key prefix manually.");
+  //   }
+  // }
+
   return (
     <DashboardFrame
       badge="API Keys"
@@ -136,14 +151,11 @@ export function ApiKeysDashboard() {
       <div className="space-y-6">
         <DashboardMetricGrid items={statusCards} />
 
-        <div className="grid gap-6 xl:grid-cols-[0.94fr_1.06fr]">
+        <div className="flex flex-col gap-6">
           <section className="space-y-6">
             <section className="md-dashboard-panel p-6">
-              <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500">
-                Create key
-              </p>
               <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
-                Provision a new credential
+                Create Key
               </h2>
               <p className="mt-2 text-sm leading-7 text-slate-600">
                 The backend returns the secret only once. Expiry and request
@@ -151,8 +163,11 @@ export function ApiKeysDashboard() {
                 dashboard.
               </p>
 
-              <form onSubmit={handleCreateApiKey} className="mt-6 space-y-5">
-                <div className="space-y-2">
+              <form
+                onSubmit={handleCreateApiKey}
+                className="mt-6 space-y-5 flex items-center justify-between"
+              >
+                <div className="space-y-2 w-[85%]">
                   <label
                     htmlFor="api-key-name"
                     className="text-sm font-medium text-slate-700"
@@ -192,11 +207,11 @@ export function ApiKeysDashboard() {
               </form>
             </section>
 
-            <section className="md-dashboard-panel-muted p-5">
-              <p className="text-sm font-semibold text-slate-950">
-                Security notice
+            <section className="md-dashboard-panel-muted p-5 flex items-center gap-1">
+              <p className="text-sm font-semibold text-red-500">
+                Security notice :
               </p>
-              <p className="mt-3 text-sm leading-7 text-slate-600">
+              <p className="text-sm leading-7 text-slate-600">
                 Never commit raw API keys to source control. Store them in a
                 secrets manager or environment variable as soon as you create
                 them.
@@ -243,11 +258,8 @@ export function ApiKeysDashboard() {
             <section className="md-dashboard-panel overflow-hidden">
               <div className="flex flex-col gap-4 border-b border-slate-200 px-6 py-5 xl:flex-row xl:items-end xl:justify-between">
                 <div>
-                  <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500">
-                    Existing keys
-                  </p>
                   <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
-                    Current credential inventory
+                    Existing Keys
                   </h2>
                 </div>
                 <div className="md-dashboard-pill border-slate-200 bg-white text-slate-700">
@@ -306,9 +318,29 @@ export function ApiKeysDashboard() {
                               <p className="text-sm font-semibold text-slate-950">
                                 {apiKey.name}
                               </p>
-                              <p className="mt-2 font-mono text-xs text-slate-500">
-                                {maskApiKey(apiKey.key_prefix)}
-                              </p>
+                              <div className="mt-2 flex items-center gap-2">
+                                <p className="font-mono text-xs text-slate-500">
+                                  {maskApiKey(apiKey.key_prefix)}
+                                </p>
+                                {/* <button
+                                  type="button"
+                                  className="inline-flex size-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-cyan-300 hover:text-cyan-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                                  aria-label={`Copy ${apiKey.name} key prefix`}
+                                  title="Copy key prefix"
+                                  onClick={() =>
+                                    handleCopyKeyPrefix(
+                                      apiKey.id,
+                                      apiKey.key_prefix,
+                                    )
+                                  }
+                                >
+                                  {copiedPrefixKeyId === apiKey.id ? (
+                                    <Check className="size-3.5" />
+                                  ) : (
+                                    <Copy className="size-3.5" />
+                                  )}
+                                </button> */}
+                              </div>
                               <p className="mt-2 text-[0.68rem] uppercase tracking-[0.14em] text-slate-600">
                                 {apiKey.requests_per_minute} rpm
                               </p>
@@ -393,10 +425,6 @@ function StatusBadge({
       Active
     </span>
   );
-}
-
-function maskApiKey(keyPrefix: string) {
-  return `${keyPrefix}${"*".repeat(16)}`;
 }
 
 function formatDate(value: string | null) {

@@ -118,11 +118,8 @@ export function UsageDashboard() {
               <section className="md-dashboard-panel p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500">
-                      Daily traffic
-                    </p>
                     <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
-                      Request volume and cache split
+                      Daily traffic
                     </h2>
                   </div>
                   {peakDay ? (
@@ -209,9 +206,6 @@ export function UsageDashboard() {
 
               <section className="md-dashboard-panel p-6">
                 <div>
-                  <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500">
-                    API key breakdown
-                  </p>
                   <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
                     Which keys are driving traffic
                   </h2>

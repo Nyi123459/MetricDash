@@ -2,14 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import {
-  Activity,
-  ArrowRight,
-  KeyRound,
-  ShieldCheck,
-  Sparkles,
-  Zap,
-} from "lucide-react";
+import { Activity, ArrowRight, KeyRound, ShieldCheck, Zap } from "lucide-react";
 import { APP_ROUTES } from "@/common/constants/routes";
 import { getApiErrorMessage } from "@/common/lib/api-errors";
 import {
@@ -20,19 +13,12 @@ import {
   formatShortDate,
 } from "@/features/dashboard/lib/dashboard-formatters";
 import { useDashboardOverview } from "@/features/dashboard/hooks/use-dashboard-data";
-import { MetadataPreviewPanel } from "@/features/dashboard/components/metadata-preview-panel";
 import { DashboardFrame } from "@/features/dashboard/components/dashboard-frame";
 import { DashboardMetricGrid } from "@/features/dashboard/components/dashboard-metric-grid";
 import { DashboardEmptyState } from "@/features/dashboard/components/dashboard-empty-state";
 
 const rangeOptions = [7, 14, 30] as const;
-const requestPipeline = [
-  "Validate key",
-  "Check cache",
-  "Fetch source",
-  "Normalize fields",
-  "Return payload",
-];
+const USAGE_TREND_SCROLL_THRESHOLD = 7;
 
 export function DashboardShell() {
   const [days, setDays] = useState<(typeof rangeOptions)[number]>(7);
@@ -73,33 +59,6 @@ export function DashboardShell() {
       ]
     : [];
 
-  const quickLinks = [
-    {
-      href: APP_ROUTES.dashboardApiKeys,
-      title: "Manage API keys",
-      description:
-        "Provision new credentials, reveal the secret once, and revoke access safely.",
-    },
-    {
-      href: APP_ROUTES.dashboardUsage,
-      title: "Inspect usage",
-      description:
-        "Review request volume, cache efficiency, and latency across the current window.",
-    },
-    {
-      href: APP_ROUTES.dashboardLogs,
-      title: "Investigate logs",
-      description:
-        "Open the request stream when a customer reports upstream failures or odd metadata.",
-    },
-    {
-      href: APP_ROUTES.dashboardBilling,
-      title: "Review billing",
-      description:
-        "See launch pricing, included usage, and the current monthly estimate before Stripe goes live.",
-    },
-  ];
-
   const usageTrend = overviewQuery.data?.usageTrend ?? [];
   const displayedUsageTrend = [...usageTrend].sort(
     (left, right) =>
@@ -110,6 +69,8 @@ export function DashboardShell() {
     ...usageTrend.map((point) => point.requestCount),
     1,
   );
+  const usageTrendNeedsScroll =
+    displayedUsageTrend.length > USAGE_TREND_SCROLL_THRESHOLD;
 
   return (
     <DashboardFrame
@@ -152,15 +113,12 @@ export function DashboardShell() {
           <>
             <DashboardMetricGrid items={summaryCards} />
 
-            <div className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
+            <div className="grid gap-6 xl:grid-cols-2">
               <section className="md-dashboard-panel p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500">
-                      Request volume
-                    </p>
                     <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
-                      Activity over the last {days} days
+                      Request volume (last {days} days)
                     </h2>
                   </div>
                   <div className="md-dashboard-pill border-slate-200 bg-white text-slate-700">
@@ -169,7 +127,13 @@ export function DashboardShell() {
                   </div>
                 </div>
 
-                <div className="mt-6 space-y-4">
+                <div
+                  className={
+                    usageTrendNeedsScroll
+                      ? "md-dashboard-scroll mt-6 max-h-[58rem] space-y-4 overflow-y-auto pr-2"
+                      : "mt-6 space-y-4"
+                  }
+                >
                   {displayedUsageTrend.length ? (
                     displayedUsageTrend.map((point) => {
                       const requestWidth = `${(point.requestCount / maxRequests) * 100}%`;
@@ -245,11 +209,8 @@ export function DashboardShell() {
               <section className="md-dashboard-panel p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500">
-                      Recent request stream
-                    </p>
                     <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
-                      Latest authenticated metadata calls
+                      Recent request stream
                     </h2>
                   </div>
                   <Link
@@ -306,8 +267,6 @@ export function DashboardShell() {
                 </div>
               </section>
             </div>
-
-            <MetadataPreviewPanel />
           </>
         )}
       </div>

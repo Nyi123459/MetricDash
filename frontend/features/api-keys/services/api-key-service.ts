@@ -5,6 +5,7 @@ export type ApiKeyRecord = {
   user_id: number;
   name: string;
   key_prefix: string;
+  key_hash: string;
   requests_per_minute: number;
   last_used_at: string | null;
   revoked_at: string | null;

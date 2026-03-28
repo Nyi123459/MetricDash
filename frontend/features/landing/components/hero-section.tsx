@@ -13,7 +13,7 @@ export function HeroSection() {
         <RevealInView className="min-w-0 max-w-2xl">
           <div className="md-site-kicker">
             <Sparkles className="size-3.5" />
-            V1 link preview workflow
+            Link preview workflow
           </div>
 
           <h1 className="mt-6 text-5xl font-semibold leading-[0.95] tracking-[-0.05em] text-slate-950 sm:text-6xl lg:text-7xl">
@@ -59,7 +59,7 @@ export function HeroSection() {
               ["Cache-aware", "Repeat previews stay fast and predictable."],
               ["Operational", "Keys, usage, and logs stay visible together."],
               [
-                "V1 focused",
+                "Preview focused",
                 "Built for preview-heavy products, not generic BI.",
               ],
             ].map(([title, description], index) => (

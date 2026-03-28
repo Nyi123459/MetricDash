@@ -49,12 +49,12 @@ export function DashboardPreviewSection() {
       className="md-site-section px-4 py-20 sm:px-6 lg:px-8 lg:py-24"
     >
       <div className="mx-auto max-w-7xl">
-        <RevealInView className="max-w-3xl">
+        <RevealInView className="max-w-5xl">
           <p className="md-site-kicker">Dashboard visibility</p>
-          <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-4xl lg:text-5xl">
+          <h2 className="mt-4 text-5xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-4xl lg:text-5xl">
             Built for dashboard visibility, not just raw API responses.
           </h2>
-          <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">
+          <p className="mt-4 max-w-4xl text-lg leading-8 text-slate-600">
             The product loop continues after the request succeeds. Teams need to
             inspect key usage, logs, cache behavior, and operational signals
             from the same product surface.

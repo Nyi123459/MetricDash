@@ -12,6 +12,14 @@ import {
   Zap,
 } from "lucide-react";
 import { getApiErrorMessage } from "@/common/lib/api-errors";
+import { Input } from "@/common/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/common/components/ui/select";
 import {
   formatCount,
   formatDateTime,
@@ -22,9 +30,29 @@ import { useDashboardLogs } from "@/features/dashboard/hooks/use-dashboard-data"
 import { DashboardEmptyState } from "@/features/dashboard/components/dashboard-empty-state";
 import { DashboardFrame } from "@/features/dashboard/components/dashboard-frame";
 import { DashboardMetricGrid } from "@/features/dashboard/components/dashboard-metric-grid";
+import { DashboardPagination } from "@/features/dashboard/components/dashboard-pagination";
 import type { DashboardRequestLogItem } from "@/features/dashboard/services/dashboard-service";
 
 const LOGS_PER_PAGE = 20;
+
+const STATUS_FILTER_OPTIONS = [
+  { value: "all", label: "All statuses" },
+  { value: "200", label: "200" },
+  { value: "400", label: "400" },
+  { value: "401", label: "401" },
+  { value: "404", label: "404" },
+  { value: "415", label: "415" },
+  { value: "429", label: "429" },
+  { value: "500", label: "500" },
+  { value: "502", label: "502" },
+  { value: "504", label: "504" },
+] as const;
+
+const CACHE_FILTER_OPTIONS = [
+  { value: "all", label: "All cache states" },
+  { value: "hit", label: "Cache hit" },
+  { value: "miss", label: "Cache miss" },
+] as const;
 
 export function LogsDashboard() {
   const [page, setPage] = useState(1);
@@ -34,6 +62,12 @@ export function LogsDashboard() {
   const [selectedLog, setSelectedLog] =
     useState<DashboardRequestLogItem | null>(null);
   const logsQuery = useDashboardLogs(page, LOGS_PER_PAGE);
+  const currentPage = logsQuery.data?.meta.currentPage ?? page;
+  const lastPage = logsQuery.data?.meta.lastPage ?? 1;
+  const pageStartNumber = logsQuery.data
+    ? logsQuery.data.meta.total -
+      (currentPage - 1) * logsQuery.data.meta.perPage
+    : 0;
 
   const summary = logsQuery.data?.summary;
   const summaryCards = summary
@@ -119,51 +153,47 @@ export function LogsDashboard() {
             <DashboardMetricGrid items={summaryCards} />
 
             <div className="flex flex-col gap-3 xl:flex-row">
-              <div className="md-dashboard-panel-muted flex h-12 flex-1 items-center gap-3 px-4">
-                <Search className="size-4 text-slate-500" />
-                <input
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-4 top-1/2 z-10 size-4 -translate-y-1/2 text-slate-500" />
+                <Input
                   type="search"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search by URL, request ID, key name, or error code"
-                  className="w-full bg-transparent text-sm text-slate-950 outline-none placeholder:text-slate-500"
+                  className="bg-white pl-11"
                 />
               </div>
 
-              <select
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                className="md-dashboard-select h-12 xl:w-48"
-              >
-                <option value="all">All statuses</option>
-                <option value="200">200</option>
-                <option value="400">400</option>
-                <option value="401">401</option>
-                <option value="404">404</option>
-                <option value="415">415</option>
-                <option value="429">429</option>
-                <option value="500">500</option>
-                <option value="502">502</option>
-                <option value="504">504</option>
-              </select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="xl:w-48">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_FILTER_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-              <select
-                value={cacheFilter}
-                onChange={(event) => setCacheFilter(event.target.value)}
-                className="md-dashboard-select h-12 xl:w-44"
-              >
-                <option value="all">All cache states</option>
-                <option value="hit">Cache hit</option>
-                <option value="miss">Cache miss</option>
-              </select>
+              <Select value={cacheFilter} onValueChange={setCacheFilter}>
+                <SelectTrigger className="xl:w-44">
+                  <SelectValue placeholder="All cache states" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CACHE_FILTER_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <section className="md-dashboard-panel overflow-hidden">
               <div className="flex flex-col gap-4 border-b border-slate-200 px-6 py-5 xl:flex-row xl:items-end xl:justify-between">
                 <div>
-                  <p className="text-[0.72rem] uppercase tracking-[0.18em] text-slate-500">
-                    Paginated request history
-                  </p>
                   <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-slate-950">
                     Latest metadata request outcomes
                   </h2>
@@ -174,8 +204,9 @@ export function LogsDashboard() {
                 </div>
               </div>
 
-              <div className="hidden grid-cols-[1.35fr_0.9fr_0.6fr_0.7fr_0.8fr_1.1fr_40px] gap-4 border-b border-slate-200 px-6 py-4 md:grid">
+              <div className="hidden grid-cols-[84px_1.35fr_0.9fr_0.6fr_0.7fr_0.8fr_1.1fr_40px] gap-4 border-b border-slate-200 px-6 py-4 md:grid">
                 {[
+                  "No.",
                   "Request",
                   "API key",
                   "Status",
@@ -192,58 +223,68 @@ export function LogsDashboard() {
 
               <div className="md-dashboard-scroll divide-y divide-slate-200">
                 {filteredLogs.length ? (
-                  filteredLogs.map((logItem) => (
-                    <button
-                      key={logItem.id}
-                      type="button"
-                      className="md-dashboard-table-row w-full px-6 py-4 text-left"
-                      onClick={() => setSelectedLog(logItem)}
-                    >
-                      <div className="grid gap-4 md:grid-cols-[1.35fr_0.9fr_0.6fr_0.7fr_0.8fr_1.1fr_40px] md:items-center">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-950">
-                            {logItem.domain ?? logItem.url}
-                          </p>
-                          <p className="mt-2 truncate font-mono text-xs text-slate-500">
-                            {logItem.url}
-                          </p>
-                          <p className="mt-2 text-[0.68rem] uppercase tracking-[0.14em] text-slate-600">
-                            {logItem.requestId}
-                          </p>
-                        </div>
+                  filteredLogs.map((logItem, index) => {
+                    const logNumber = Math.max(pageStartNumber - index, 1);
 
-                        <div className="text-sm text-slate-700">
-                          <p className="font-semibold text-slate-950">
-                            {logItem.apiKeyName}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            {logItem.errorCode ?? "No mapped error"}
-                          </p>
-                        </div>
+                    return (
+                      <button
+                        key={logItem.id}
+                        type="button"
+                        className="md-dashboard-table-row w-full px-6 py-4 text-left"
+                        onClick={() => setSelectedLog(logItem)}
+                      >
+                        <div className="grid gap-4 md:grid-cols-[84px_1.35fr_0.9fr_0.6fr_0.7fr_0.8fr_1.1fr_40px] md:items-center">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-950">
+                              {logNumber}
+                            </p>
+                          </div>
 
-                        <div>
-                          <StatusBadge statusCode={logItem.statusCode} />
-                        </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-950">
+                              {logItem.domain ?? logItem.url}
+                            </p>
+                            <p className="mt-2 truncate font-mono text-xs text-slate-500">
+                              {logItem.url}
+                            </p>
+                            <p className="mt-2 text-[0.68rem] uppercase tracking-[0.14em] text-slate-600">
+                              {logItem.requestId}
+                            </p>
+                          </div>
 
-                        <div>
-                          <CacheBadge cacheHit={logItem.cacheHit} />
-                        </div>
+                          <div className="text-sm text-slate-700">
+                            <p className="font-semibold text-slate-950">
+                              {logItem.apiKeyName}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {logItem.errorCode ?? "No mapped error"}
+                            </p>
+                          </div>
 
-                        <div className="inline-flex items-center gap-2 text-sm text-slate-700">
-                          <Clock3 className="size-4 text-slate-500" />
-                          {formatLatency(logItem.latencyMs)}
-                        </div>
+                          <div>
+                            <StatusBadge statusCode={logItem.statusCode} />
+                          </div>
 
-                        <div className="text-sm text-slate-600">
-                          {formatDateTime(logItem.requestedAt)}
-                        </div>
+                          <div>
+                            <CacheBadge cacheHit={logItem.cacheHit} />
+                          </div>
 
-                        <div className="flex justify-end text-slate-600">
-                          <ExternalLink className="size-4" />
+                          <div className="inline-flex items-center gap-2 text-sm text-slate-700">
+                            <Clock3 className="size-4 text-slate-500" />
+                            {formatLatency(logItem.latencyMs)}
+                          </div>
+
+                          <div className="text-sm text-slate-600">
+                            {formatDateTime(logItem.requestedAt)}
+                          </div>
+
+                          <div className="flex justify-end text-slate-600">
+                            <ExternalLink className="size-4" />
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  ))
+                      </button>
+                    );
+                  })
                 ) : (
                   <div className="p-6">
                     <DashboardEmptyState
@@ -256,29 +297,13 @@ export function LogsDashboard() {
 
               <div className="flex flex-col gap-3 border-t border-slate-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-slate-600">
-                  Page {logsQuery.data?.meta.currentPage ?? page} of{" "}
-                  {logsQuery.data?.meta.lastPage ?? 1}
+                  Page {currentPage} of {lastPage}
                 </p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    className="md-dashboard-button-secondary inline-flex h-11 items-center justify-center px-4 text-sm font-semibold hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
-                    onClick={() =>
-                      setPage((current) => Math.max(1, current - 1))
-                    }
-                    disabled={page === 1}
-                  >
-                    Previous
-                  </button>
-                  <button
-                    type="button"
-                    className="md-dashboard-button-secondary inline-flex h-11 items-center justify-center px-4 text-sm font-semibold hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
-                    onClick={() => setPage((current) => current + 1)}
-                    disabled={!(logsQuery.data?.meta.hasMorePages ?? false)}
-                  >
-                    Next
-                  </button>
-                </div>
+                <DashboardPagination
+                  currentPage={currentPage}
+                  lastPage={lastPage}
+                  onPageChange={setPage}
+                />
               </div>
             </section>
           </>

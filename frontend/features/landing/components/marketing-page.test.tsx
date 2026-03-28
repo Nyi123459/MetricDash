@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { MarketingPage } from "@/features/landing/components/marketing-page";
 
 describe("MarketingPage", () => {
-  it("renders the V1 landing page structure and safe marketing copy", () => {
+  it("renders the landing page structure and safe marketing copy", () => {
     render(<MarketingPage />);
 
     const hasLink = (name: string, href: string) =>
@@ -39,7 +39,7 @@ describe("MarketingPage", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/pricing is framed for a v1 launch/i),
+      screen.getByText(/pricing is framed for launch/i),
     ).toBeInTheDocument();
 
     expect(screen.queryByText(/SOC2/i)).not.toBeInTheDocument();
