@@ -11,3 +11,5 @@ frontend/dist/
 
 docs
 AGENTS.md
+deployment/env/*.env
+!deployment/env/*.env.example

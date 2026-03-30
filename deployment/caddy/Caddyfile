@@ -1,0 +1,17 @@
+http://52.221.165.127 {
+    encode zstd gzip
+
+    @health path /health
+    handle @health {
+        reverse_proxy backend:8800
+    }
+
+    @api path /api/*
+    handle @api {
+        reverse_proxy backend:8800
+    }
+
+    handle {
+        reverse_proxy frontend:3000
+    }
+}

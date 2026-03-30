@@ -1,37 +1,72 @@
 services:
-  mysql:
-    image: mysql:8.4
-    container_name: metricdash-mysql
+  caddy:
+    image: caddy:2.10
+    container_name: metricdash-caddy
     restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: metricdash
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
     ports:
-      - "3306:3306"
+      - "80:80"
+      - "443:443"
     volumes:
-      - mysql-data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
+      - ./deployment/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
 
-  redis:
-    image: redis:7.4-alpine
-    container_name: metricdash-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    command: ["redis-server", "--appendonly", "yes"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+    frontend:
+      build:
+        context: ./frontend
+        dockerfile: dockerfile
+      container_name: metricdash-frontend
+      restart: unless-stopped
+      env_file:
+        - ./deployment/env/frontend.env
+      expose:
+        - "3000"
+      healthcheck:
+        test: [ "CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+        interval: 30s
+        timeout: 10s
+        retries: 5
+        start_period: 30s
+      
+    backend:
+      build:
+        context: ./backend
+        dockerfile: dockerfile
+      container_name: metricdash-backend
+      restart: unless-stopped
+      env_file:
+        - ./deployment/env/backend.env
+      expose:
+        - "8800"
+      depends_on:
+        redis:
+          condition: service_healthy
+      healthcheck:
+        test: [ "CMD", "node", "-e", "fetch('http://127.0.0.1:8800/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+        interval: 30s
+        timeout: 10s
+        retries: 5
+        start_period: 30s
+
+    redis:
+      image: redis:7.4-alpine
+      container_name: metricdash-redis
+      restart: unless-stopped
+      command: ["redis-server", "--appendonly", "yes"]
+      volumes:
+        - redis_data:/data
+      healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 30s
+        timeout: 5s
+        retries: 5
 
 volumes:
-  mysql-data:
-  redis-data:
+  redis_data:
+  caddy_data:
+  caddy_config:
