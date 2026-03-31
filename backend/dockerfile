@@ -8,6 +8,7 @@ RUN npm ci
 
 COPY . .
 
+ENV DATABASE_URL=mysql://root:root@localhost:3306/metricdash
 RUN npm run prisma:generate
 RUN npm run build
 

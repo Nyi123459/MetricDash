@@ -1,3 +1,5 @@
 #!/usr/bin/env sh
 
-# npm run test:all
+# npm run test:all 
+npm run build:all
+
